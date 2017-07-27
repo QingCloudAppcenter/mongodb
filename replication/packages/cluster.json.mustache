@@ -1,0 +1,200 @@
+{
+   "name":{{cluster.name}},
+   "description":{{cluster.description}},
+   "vxnet":{{cluster.vxnet}},
+   "backup_policy": "device",
+   "incremental_backup_supported": true,
+   "advanced_actions": ["change_vxnet", "scale_horizontal"],
+   "nodes":[
+      {
+         "role":"replica",
+         "container":{
+            "type":"kvm",
+            "zone":"test",
+            "image":"img-vh5nggwn"
+         },
+         "instance_class":{{cluster.replica.instance_class}},
+         "count":{{cluster.replica.count}},
+         "cpu":{{cluster.replica.cpu}},
+         "memory":{{cluster.replica.memory}},
+         "volume":{
+            "size":{{cluster.replica.volume_size}},
+            "mount_point":"/data",
+            "filesystem":"xfs"
+         },
+         "passphraseless":"ssh-rsa",
+         "vertical_scaling_policy":"sequential",
+         "services":{
+            "backup": {
+               "nodes_to_execute_on": 1,
+               "order": 1
+            },
+            "init":{
+               "post_start_service":true,
+               "order":1,
+               "cmd":"/opt/mongodb/bin/mongo-trib.py init"
+            },
+            "start":{
+               "cmd":"mkdir -p /data/mongodb;/opt/mongodb/bin/start-mongod-server.sh"
+            },
+            "stop":{
+               "cmd":"/opt/mongodb/bin/stop-mongod-server.sh"
+            },
+            "restart":{
+               "cmd":"/opt/mongodb/bin/restart-mongod-server.sh"
+            },
+            "scale_out":{
+               "nodes_to_execute_on":1,
+               "order":2,
+               "cmd":"/opt/mongodb/bin/mongo-trib.py reconfig"
+            },
+            "scale_in":{
+               "nodes_to_execute_on":1,
+               "order":3,
+               "cmd":"/opt/mongodb/bin/mongo-trib.py reconfig"
+            },
+            "destroy":{
+               "nodes_to_execute_on":1,
+               "order":2,
+               "cmd":"/opt/mongodb/bin/mongo-trib.py reconfig"
+            },
+            "copy_log": {
+                "type": "custom",
+                "cmd": "/opt/mongodb/bin/mongo-trib.py copy_log && echo finish",
+                "timeout": 1800,
+                "service_params": {
+                    "copy_log": {{service_params.copy_log}}
+                }
+            },
+            "clean_log": {
+                "type": "custom",
+                "cmd": "/opt/mongodb/bin/mongo-trib.py clean_log",
+                "timeout": 1800
+            }
+         }
+      }
+   ],
+   "env": {
+      "user": {{env.user}},
+      "passwd": {{env.passwd}},
+      "maxConns": {{env.maxConns}},
+      "oplogSize": {{env.oplogSize}},
+      "port": {{env.port}}
+   },
+   "advanced_services": {
+      "update_nodes_names": {
+         "cmd": "/opt/mongodb/bin/mongo-trib.py get_nodes_names",
+         "timeout": 10
+      }
+   },
+   "endpoints": {
+      "mongod": {
+         "port": {{env.port}},
+         "protocol": "TCP"
+      }
+   },
+   "health_check":{
+      "enable": true,
+      "interval_sec": 60,
+      "timeout_sec": 30,
+      "action_timeout_sec": 30,
+      "healthy_threshold": 2,
+      "unhealthy_threshold": 2,
+      "check_cmd": "/opt/mongodb/bin/mongo-trib.py health_check",
+      "action_cmd": "/opt/mongodb/bin/mongo-trib.py tackle"
+   },
+   "monitor":{
+      "enable":true,
+      "cmd":"/opt/mongodb/bin/mongo-trib.py monitor",
+      "items":{
+         "opcounters-query":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "opcounters-update":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "opcountersRepl-query":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "opcounters-insert":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "opcounters-total":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "opcountersRepl-total":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "opcountersRepl-delete":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "connections":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"avg",
+            "scale_factor_when_display":1
+         },
+         "opcountersRepl-insert":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "opcountersRepl-update":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "opcounters-delete":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         }
+      },
+      "groups":{
+         "opcountersRepl":[
+            "opcountersRepl-insert",
+            "opcountersRepl-query",
+            "opcountersRepl-update",
+            "opcountersRepl-delete"
+         ],
+         "opcounters":[
+            "opcounters-insert",
+            "opcounters-query",
+            "opcounters-update",
+            "opcounters-delete"
+         ]
+      },
+      "display":[
+         "opcounters",
+         "opcountersRepl",
+         "connections"
+      ],
+      "alarm":[
+         "connections"
+      ]
+   }
+}
