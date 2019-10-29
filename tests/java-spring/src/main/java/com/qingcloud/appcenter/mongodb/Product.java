@@ -1,22 +1,21 @@
 package com.qingcloud.appcenter.mongodb;
 
+import org.springframework.data.annotation.Id;
+
 public class Product {
+    @Id
+    private String id;
+
     private String name;
     private String version;
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
+    public Product(String name, String version) {
         this.name = name;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
         this.version = version;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Product[id=%s, name='%s', version='%s']", id, name, version);
     }
 }
