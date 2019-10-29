@@ -1,0 +1,4 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://admin:Passw0rd@192.168.2.51:27017,192.168.2.50:27017,192.168.2.54:27017/demo?replicaSet=foobar&authSource=admin
