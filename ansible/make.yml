@@ -1,0 +1,17 @@
+---
+- name: mongodb tasks
+  hosts: image
+  vars:
+    target_env: "{{ lookup('env', 'target') }}"
+  tasks:
+  - include_role:
+      name: "{{ name }}"
+    loop:
+    - disable-motd-1.0.0
+    - app-agent-1.0.1
+    - appctl-1.1.0
+    - arping-1.0.0
+    - jq-1.0.3
+    - netcat-openbsd-1.0.0
+    loop_control:
+      loop_var: name
