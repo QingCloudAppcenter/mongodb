@@ -7,11 +7,14 @@
   - include_role:
       name: "{{ name }}"
     loop:
+    - update-apt-sources-1.0.0
+    - disable-apt-jobs-1.0.0
     - disable-motd-1.0.0
     - app-agent-1.0.1
     - appctl-1.1.0
     - arping-1.0.0
     - jq-1.0.3
     - netcat-openbsd-1.0.0
+    - mongodb
     loop_control:
       loop_var: name

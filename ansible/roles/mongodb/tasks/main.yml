@@ -1,0 +1,26 @@
+---
+- name: create user mongod
+  user:
+    name: mongod
+    groups: svc
+    shell: /sbin/nologin
+    create_home: false
+- name: install mongodb
+  include_role:
+    name: install-1.0.0
+  vars:
+    opts:
+      pkg_name: mongodb
+      pkg_version: "{{ mongodb_version }}"
+      pkg_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-{{ mongodb_version }}.tgz
+      pkg_type: .tgz
+      extracts: true
+- name: install services
+  copy:
+    src: lib/systemd/system/
+    dest: /lib/systemd/system/
+- name: mask services
+  systemd:
+    name: mongod
+    enabled: no
+    state: stopped
