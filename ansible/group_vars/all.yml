@@ -1,2 +1,4 @@
 ---
 mongodb_version: 3.4.17
+app_version: 1.0.0
+local_cache_path: /tmp

@@ -1,2 +1,2 @@
 hosts
-*.tgz
+**/tmp

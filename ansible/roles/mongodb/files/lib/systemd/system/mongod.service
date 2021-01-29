@@ -7,7 +7,7 @@ Wants=network-online.target
 [Service]
 User=mongod
 Group=svc
-Environment="OPTIONS=-f /opt/app/bin/tmpl/mongod.conf"
+Environment="OPTIONS=-f /opt/app/current/conf/mongodb/mongod.conf"
 ExecStart=/opt/mongodb/current/bin/mongod $OPTIONS
 ExecStartPre=/usr/bin/mkdir -p /data/db
 ExecStartPre=/usr/bin/chown mongod:svc /data/db

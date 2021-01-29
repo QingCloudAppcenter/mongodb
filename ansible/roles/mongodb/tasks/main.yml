@@ -7,7 +7,7 @@
     create_home: false
 - name: install mongodb
   include_role:
-    name: install-1.0.0
+    name: install-1.0.5
   vars:
     opts:
       pkg_name: mongodb
@@ -24,3 +24,6 @@
     name: mongod
     enabled: no
     state: stopped
+- name: install confd files
+  include_role:
+    name: confd-files-1.0.9
