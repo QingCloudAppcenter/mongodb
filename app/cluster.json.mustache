@@ -11,7 +11,7 @@
          "container":{
             "type":"kvm",
             "zone":"sh1",
-            "image":"img-wdifebpo"
+            "image":"img-5ze3zmsx"
          },
          "user_access": true,
          "instance_class":{{cluster.replica.instance_class}},
@@ -25,8 +25,7 @@
          },
          "services": {
 			"init": {
-            "post_start_service": true,
-				"cmd": "appctl init"
+            "cmd": "appctl init"
 			},
 			"start": {
 				"cmd": "appctl start"

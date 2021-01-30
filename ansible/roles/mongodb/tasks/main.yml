@@ -15,15 +15,14 @@
       pkg_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-{{ mongodb_version }}.tgz
       pkg_type: .tgz
       extracts: true
-- name: install services
+- name: copy appctl conf files
   copy:
-    src: lib/systemd/system/
-    dest: /lib/systemd/system/
-- name: mask services
-  systemd:
-    name: mongod
-    enabled: no
-    state: stopped
+    src: opt/app/
+    dest: /opt/app/
+    owner: root
+    group: svc
+    mode: preserve
+    directory_mode: u=rwx,g=rx,o=
 - name: install confd files
   include_role:
     name: confd-files-1.0.9

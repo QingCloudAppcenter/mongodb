@@ -9,11 +9,7 @@ User=mongod
 Group=svc
 Environment="OPTIONS=-f /opt/app/current/conf/mongodb/mongod.conf"
 ExecStart=/opt/mongodb/current/bin/mongod $OPTIONS
-ExecStartPre=/usr/bin/mkdir -p /data/db
-ExecStartPre=/usr/bin/chown mongod:svc /data/db
-ExecStartPre=/usr/bin/chmod 0755 /data/db
 PermissionsStartOnly=true
-PIDFile=/data/db/mongod.pid
 Type=forking
 # file size
 LimitFSIZE=infinity
