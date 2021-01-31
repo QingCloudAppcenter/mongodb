@@ -10,7 +10,7 @@ Group=svc
 Environment="OPTIONS=-f /opt/app/current/conf/mongodb/mongod.conf"
 ExecStart=/opt/mongodb/current/bin/mongod $OPTIONS
 PermissionsStartOnly=true
-Type=forking
+Type=simple
 # file size
 LimitFSIZE=infinity
 # cpu time
