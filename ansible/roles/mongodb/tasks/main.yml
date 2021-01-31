@@ -13,8 +13,9 @@
       pkg_name: mongodb
       pkg_version: "{{ mongodb_version }}"
       pkg_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-{{ mongodb_version }}.tgz
-      pkg_type: .tgz
-      extracts: true
+      pkg_type: tgz
+      creates: bin
+      extracts: yes
 - name: copy appctl conf files
   copy:
     src: opt/app/
