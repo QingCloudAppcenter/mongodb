@@ -1,4 +1,4 @@
 hosts
 **/tmp
 *.tar.gz
-debug.yml
+debug*.yml
