@@ -4,14 +4,19 @@
    "vxnet":{{cluster.vxnet}},
    "backup_policy": "device",
    "incremental_backup_supported": true,
+   "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
+   "upgrade_policy": [
+        "appv-omli6gvn",
+        "appv-xhnpehuq"
+    ],
    "nodes":[
       {
          "role":"replica",
          "container":{
             "type":"kvm",
-            "zone":"test",
-            "image":"img-vh5nggwn"
+            "zone":"pek3a",
+            "image":"img-wrcf9rnn"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -19,8 +24,9 @@
          "memory":{{cluster.replica.memory}},
          "volume":{
             "size":{{cluster.replica.volume_size}},
+            "class":{{cluster.replica.volume_class}},
             "mount_point":"/data",
-            "filesystem":"xfs"
+            "filesystem":"ext4"
          },
          "passphraseless":"ssh-rsa",
          "vertical_scaling_policy":"sequential",
@@ -32,44 +38,53 @@
             "init":{
                "post_start_service":true,
                "order":1,
-               "cmd":"/opt/mongodb/bin/mongo-trib.py init"
+               "cmd":"/opt/app/bin/MongoTrib.py init"
             },
             "start":{
-               "cmd":"mkdir -p /data/mongodb;/opt/mongodb/bin/start-mongod-server.sh"
+               "cmd":"mkdir -p /data/mongodb /data/info /data/logs /data/caddy/logs;/opt/app/bin/start-mongod-server.sh"
             },
             "stop":{
-               "cmd":"/opt/mongodb/bin/stop-mongod-server.sh"
+               "cmd":"/opt/app/bin/stop-mongod-server.sh"
             },
             "restart":{
-               "cmd":"/opt/mongodb/bin/restart-mongod-server.sh"
+               "cmd":"/opt/app/bin/restart-mongod-server.sh"
             },
             "scale_out":{
                "nodes_to_execute_on":1,
                "order":2,
-               "cmd":"/opt/mongodb/bin/mongo-trib.py reconfig"
+               "cmd":"/opt/app/bin/MongoTrib.py reconfig"
             },
             "scale_in":{
                "nodes_to_execute_on":1,
                "order":3,
-               "cmd":"/opt/mongodb/bin/mongo-trib.py reconfig"
+               "cmd":"/opt/app/bin/MongoTrib.py reconfig"
             },
             "destroy":{
                "nodes_to_execute_on":1,
                "order":2,
-               "cmd":"/opt/mongodb/bin/mongo-trib.py reconfig"
+               "cmd":"/opt/app/bin/MongoTrib.py reconfig"
             },
             "copy_log": {
                 "type": "custom",
-                "cmd": "/opt/mongodb/bin/mongo-trib.py copy_log && echo finish",
+                "cmd": "chown caddy:svc /data/caddy/logs/;/opt/app/bin/MongoTrib.py copy_log && echo finish",
                 "timeout": 1800,
                 "service_params": {
                     "copy_log": {{service_params.copy_log}}
                 }
             },
+            "stop_caddy":{
+                "type": "custom",
+                "cmd": "systemctl stop caddy;rm -rf /data/logs/* && echo finish",
+                "timeout": 1800
+            },
             "clean_log": {
                 "type": "custom",
-                "cmd": "/opt/mongodb/bin/mongo-trib.py clean_log",
+                "cmd": "/opt/app/bin/MongoTrib.py clean_log",
                 "timeout": 1800
+            },
+            "upgrade": {
+                "cmd": "/opt/app/bin/iptables-op.sh ban && /opt/app/bin/Upgrade.py && /opt/app/bin/iptables-op.sh open",
+                "post_start_service":false,"timeout":86400
             }
          }
       }
@@ -77,9 +92,12 @@
    "env": {
       "user": {{env.user}},
       "passwd": {{env.passwd}},
+      "caddy_user":{{env.caddy_user}},
+      "caddy_password":{{env.caddy_password}},
       "maxConns": {{env.maxConns}},
       "oplogSize": {{env.oplogSize}},
-      "port": {{env.port}}
+      "port": {{env.port}},
+      "cacheSizeUsage": {{env.cacheSizeUsage}}
    },
    "advanced_services": {
       "update_nodes_names": {
@@ -100,12 +118,24 @@
       "action_timeout_sec": 30,
       "healthy_threshold": 2,
       "unhealthy_threshold": 2,
-      "check_cmd": "/opt/mongodb/bin/mongo-trib.py health_check",
-      "action_cmd": "/opt/mongodb/bin/mongo-trib.py tackle"
+      "check_cmd": "/opt/app/bin/MongoTrib.py health_check",
+      "action_cmd": "/opt/app/bin/MongoTrib.py tackle"
+   },
+   "display_tabs": {
+      "Node Details": {
+         "cmd": "/opt/app/bin/MongoTrib.py get_node_details",
+         "timeout": 10,
+         "description": ""
+      },
+      "Connection String": {
+         "cmd": "/opt/app/bin/MongoTrib.py print_connection_string",
+         "timeout": 10,
+         "description": ""
+      }
    },
    "monitor":{
       "enable":true,
-      "cmd":"/opt/mongodb/bin/mongo-trib.py monitor",
+      "cmd":"/opt/app/bin/MongoTrib.py monitor",
       "items":{
          "opcounters-query":{
             "unit":"times",

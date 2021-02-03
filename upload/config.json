@@ -70,6 +70,15 @@
               "required": "yes"
             },
             {
+              "key": "volume_class",
+              "label": "Volume Class",
+              "description": "The volume type for each instance，such as high performance，high performance plus，high capacity",
+              "type": "integer",
+              "default": 3,
+              "range": [0, 3, 5],
+              "required": "yes"
+            },
+            {
               "key": "count",
               "label": "Count",
               "description": "Number of nodes for the replication set to create. MongoDB with only one node is just for test, not for production.",
@@ -116,7 +125,7 @@
         {
           "key": "copy_log",
           "label": "copy_log",
-          "description": "Download by wget ftp://IP/mongod.log",
+          "description": "Download by wget http://IP/mongod.log or check by http://IP in browser",
           "default": "mongod.log",
           "range": [
             "mongod.log"
@@ -136,7 +145,7 @@
           "label": "User",
           "description": "We'll create two accounts for you: one with readWriteAnyDatabase rights, one with root rights. If you need to use MongoDB admin rights, you can log in with the root account.",
           "changeable": false,
-          "pattern": "\\w+",
+          "pattern": "^((?!root)\\w)+$",
           "type": "string",
           "required": "yes"
         },
@@ -160,6 +169,16 @@
           "required": "no"
         },
         {
+          "description": "cacheSizeUsage_description",
+          "required": "no",
+          "label": "cacheSizeUsage_label",
+          "default": 80,
+          "key": "cacheSizeUsage",
+          "min": 5,
+          "max": 95,
+          "type": "integer"
+        },
+        {
           "key": "oplogSize",
           "label": "oplogSize",
           "description": "size to use (in MiB) for replication op",
@@ -177,6 +196,24 @@
           "default": 27017,
           "max": 32767,
           "min": 4096,
+          "required": "no"
+        },
+        {
+          "key": "caddy_user",
+          "label": "caddy-user",
+          "description": "username for caddy-server",
+          "type": "string",
+          "pattern": "",
+          "default": "caddy",
+          "required": "no"
+        },
+        {
+          "key": "caddy_password",
+          "label": "caddy-password",
+          "description": "password for caddy-server",
+          "type": "password",
+          "default": "caddy",
+          "pattern": "",
           "required": "no"
         }
       ]
