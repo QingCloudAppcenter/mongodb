@@ -4,14 +4,31 @@
    "vxnet":{{cluster.vxnet}},
    "backup_policy": "device",
    "incremental_backup_supported": true,
+   "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
+   "upgrade_policy": [
+    "appv-omli6gvn"
+   ],
+   "upgrading_policy": "in-place-sequential",
+   "in-place-upgrade-nodes": [{
+      "container":{
+         "snapshot": "ss-7ebva6lb",
+         "zone": "pek3"
+      },
+      "copy":[{
+         "mount_role": "replica",
+         "mount_point": "/upgrade",
+         "mount_options": "defaults,noatime",
+         "filesystem": "ext4"
+      }]
+   }],
    "nodes":[
       {
          "role":"replica",
          "container":{
             "type":"kvm",
-            "zone":"test",
-            "image":"img-vh5nggwn"
+            "zone":"pek3",
+            "image":"img-z5ls27md"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -20,7 +37,7 @@
          "volume":{
             "size":{{cluster.replica.volume_size}},
             "mount_point":"/data",
-            "filesystem":"xfs"
+            "filesystem":"ext4"
          },
          "passphraseless":"ssh-rsa",
          "vertical_scaling_policy":"sequential",
@@ -52,6 +69,10 @@
                "nodes_to_execute_on":1,
                "order":3,
                "cmd":"/opt/mongodb/bin/mongo-trib.py reconfig"
+            },
+            "upgrade": {
+              "cmd": "/upgrade/opt/mongodb/bin/upgrade.sh",
+              "timeout": 10800
             },
             "destroy":{
                "nodes_to_execute_on":1,
