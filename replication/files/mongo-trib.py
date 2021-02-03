@@ -147,13 +147,13 @@ systemLog:
   logAppend: true 
 storage:
   dbPath: "/data/mongodb/"
-  engine: wiredTiger
+  engine: mmapv1
   journal:
     enabled: true
 processManagement:
    fork: true
 net:
-  bindIp: 0.0.0.0
+  # bindIp: 0.0.0.0
   port: %(port)s
   maxIncomingConnections: %(max_conns)s
 replication:
@@ -338,6 +338,29 @@ security:
                 role = self.ROLE_NAME_PRIORITY0
             nodes_names[cluster_node_id] = role
         print(json_dumps(nodes_names))
+
+    def get_node_details(self):
+        c = self.connect_local()
+        ret = c.admin.command('replSetGetStatus', 1)
+        members = ret['members']
+        ip_roles = {}
+        for member in members:
+            ip = member['name'].split(':')[0]
+            role = member['stateStr'].lower()
+            ip_roles[ip] = role
+        metadata_members = self.get_members()
+        node_details = {
+            'labels': ['Node', 'IP', 'Role'],
+            'data': [],
+        }
+        for member in metadata_members:
+            cluster_node_id = member['node_id']
+            ip = member['ip']
+            role = ip_roles[ip]
+            if role == self.ROLE_NAME_SECONDARY and self.get_member_priority(member) == 0:
+                role = self.ROLE_NAME_PRIORITY0
+            node_details['data'].append([cluster_node_id, ip, role])
+        print(json_dumps(node_details))
 
     def get_members(self):
         meta_data = self.get_meta_data()
@@ -660,6 +683,8 @@ def main():
         return mongo.cleanup_all_mongod()
     elif cmd == 'get_nodes_names':
         return mongo.get_nodes_names()
+    elif cmd == 'get_node_details':
+        return mongo.get_node_details()
     elif cmd == 'detect_host_changed':
         return mongo.detect_host_changed()
     elif cmd == 'copy_log':
