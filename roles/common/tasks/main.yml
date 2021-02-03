@@ -1,8 +1,11 @@
 ---
+
+- shell: cd /tmp ;wget http://repo.zabbix.com/zabbix/3.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_3.4-1+xenial_all.deb && dpkg -i zabbix-release_3.4-1+xenial_all.deb
+
 - name: apt install required packages
   apt:
     update_cache: yes
-    name: [ 'vim', 'xfsprogs', 'python2.7-dev', 'python-pip', 'htop', 'lsof', 'bwm-ng', 'python-simplejson']
+    name: [ 'vim', 'xfsprogs', 'python2.7-dev', 'python-pip', 'htop', 'lsof', 'bwm-ng', 'python-simplejson', 'zabbix-agent', 'zabbix-get', 'zabbix-sender']
     state: present
 
 - group:
@@ -107,6 +110,7 @@
     - stop-mongod-server.sh
     - Upgrade.py
     - Fix.py
+    - zabbix.sh
 
 - copy: src={{ item }} dest=/etc/confd/{{ item }}
   with_items:
@@ -173,6 +177,11 @@
     group: root
     mode: u=rw,go=r
   when: src is directory
+
+- name: Copy zabbix files
+  copy:
+    src: roles/common/files/etc/zabbix/zabbix_agentd.d/zabbix_mongodb.conf
+    dest: /etc/zabbix/zabbix_agentd.d/zabbix_mongodb.conf
 
 - raw: |
      >~/.bash_history && history -c

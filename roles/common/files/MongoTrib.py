@@ -13,6 +13,7 @@ import time
 import yaml
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
+import ZabbixEnv
 
 
 def json_dumps(_dict):
@@ -92,6 +93,10 @@ class Mongo(object):
     START_CADDY_CMD = "systemctl start caddy"
     STOP_CADDY_CMD = "systemctl stop caddy"
 
+    ZABBIX_CMD = "/opt/app/bin/zabbix.sh revive"
+    MONGO_VERSION_FILE = INFO_DIR + "version.info"
+    CADDY_DIR = "/data/caddy"
+
     def __init__(self):
         self.logger = self.init_logger()
 
@@ -153,7 +158,7 @@ class Mongo(object):
                          1.0) if version == "3.2" else max(
             round(int(env.get("cacheSizeUsage")) * node_memory / 100, 2) / 1024,
             0.25)  # 见 https://docs.mongodb.com/v3.2/faq/storage/
-        cache_size = min(round(node_memory - 256,2)/1024,cache_size)
+        cache_size = min(round(node_memory - 256, 2) / 1024, cache_size)
         return cache_size
 
     def gen_conf(self, auth=True, rs=True, key_file=True, port=None):
@@ -563,7 +568,12 @@ security:
                 raise MongoError('create user [%s] failed' % name)
         return
 
+    def save_version(self):
+        with open(self.MONGO_VERSION_FILE, "w") as f:
+            f.write('{"version":4.0,"engine":"WiredTiger"}')
+
     def init(self):
+        self.save_version()
         if not self.first_node:
             print('Current instance is not the first node')
             return
@@ -645,8 +655,9 @@ security:
     def print_connection_string(self):
         metadata = self.get_meta_data()
         mongo_port = metadata["env"]["port"]
-        ip_list = list(map(lambda ele:ele["ip"]+":{}".format(mongo_port),metadata["hosts"]["replica"].values()))
-        connection_string = "mongodb://{user}:[password]@{ips}/[database]?replicaSet=foobar&authSource=admin".format(user=metadata["env"]["user"],ips=",".join(ip_list))
+        ip_list = list(map(lambda ele: ele["ip"] + ":{}".format(mongo_port), metadata["hosts"]["replica"].values()))
+        connection_string = "mongodb://{user}:[password]@{ips}/[database]?replicaSet=foobar&authSource=admin".format(
+            user=metadata["env"]["user"], ips=",".join(ip_list))
         connection_string_details = {
             'labels': ['connection_string'],
             'data': [[connection_string]]
@@ -708,33 +719,57 @@ security:
         # get mongo resp via is_master
         self.is_master()
 
+        if not self.check_zabbix_agent():
+            raise MongoError("check zabbix-agent fail")
+
+    def check_zabbix_agent(self):
+        if ZabbixEnv.is_start_zabbix == "yes":
+            cmd = "systemctl is-active zabbix-agent"
+            retcode, output = self.exec_cmd(cmd)
+            return retcode == 0 and output.strip() == "active"
+
+        if ZabbixEnv.is_start_zabbix == "no":
+            cmd = "systemctl is-active zabbix-agent"
+            retcode, output = self.exec_cmd(cmd)
+            # systemctl is-active zabbix-agent 结果为 inactive 的话，$? 为非0
+            return output.strip() == "inactive"
+
+    def revive_zabbix(self):
+        retcode, output = self.exec_cmd(self.ZABBIX_CMD)
+        if retcode != 0:
+            raise MongoError("exec zabbix.sh fail")
+
     def tackle(self):
+        self.logger.info("Start tackle")
         if self.has_ignore_agent():
             self.logger.info('skip tackle, ignore agent file exists')
             return
         if not os.path.isfile(self.CONF_PATH):
             self.logger.info('skip tackle, [%s] file not exists', self.CONF_PATH)
             return
-        if self.check_local_mongod():
-            self.logger.info('skip tackle, mongod is running')
-            return
-
-        self.start_local_mongod()
+        if not self.check_local_mongod():
+            self.logger.info("mongod is fail,will revive mongod")
+            self.start_local_mongod()
+        if not self.check_zabbix_agent():
+            self.logger.info("zabbix-agent is fail,will revive zabbix-agent")
+            self.revive_zabbix()
+        self.logger.info("Tackle End")
 
     def copy_log(self):
-        files = filter(lambda file:"mongod.log" in file,os.listdir(self.DATA_PATH))
+        files = filter(lambda file: "mongod.log" in file, os.listdir(self.DATA_PATH))
         self.logger.info("copy_log [%s]......", files)
         for log_file in files:
-            dest_path = os.path.join(self.MONGOD_COPY_LOG_DIR,log_file)
-            cmd = "cp %s %s && chmod 644 %s" % (self.DATA_PATH+log_file, dest_path, dest_path)
+            dest_path = os.path.join(self.MONGOD_COPY_LOG_DIR, log_file)
+            cmd = "cp %s %s && chmod 644 %s" % (self.DATA_PATH + log_file, dest_path, dest_path)
             exec_cmd(cmd)
         exec_cmd(self.START_CADDY_CMD)
         return 0
 
     def clean_log(self):
-        files = filter(lambda file:"mongod.log" in file,os.listdir(self.DATA_PATH))
+        files = filter(lambda file: "mongod.log" in file, os.listdir(self.DATA_PATH))
         self.logger.info("clean_log [%s]......", files)
-        map(lambda file: exec_cmd("echo > {}".format(self.DATA_PATH + file)) if self.DATA_PATH + file == self.MONGOD_LOG_PATH else os.remove(
+        map(lambda file: exec_cmd(
+            "echo > {}".format(self.DATA_PATH + file)) if self.DATA_PATH + file == self.MONGOD_LOG_PATH else os.remove(
             self.DATA_PATH + file), files)
         exec_cmd("rm -rf {}*".format(self.MONGOD_COPY_LOG_DIR))
 

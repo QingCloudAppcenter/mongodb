@@ -3,7 +3,7 @@
   hosts: all
   gather_facts: no
   vars:
-    caddy_version: 1.0.0-beta1
+    caddy_version: 1.0.0
     mongo_dir_32: mongo32
     mongodb_version_32: mongodb-linux-x86_64-3.2.21
     mongodb_sha_32: 632e6c83ac4d9819f239a3a51bb384912271d9f9a5e8e0c1b0f64deb6ae4263a

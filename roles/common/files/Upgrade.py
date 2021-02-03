@@ -11,8 +11,8 @@ class UpgradeMongo(Mongo):
 
     replicaset_info_file = Mongo.INFO_DIR + "replicaSet.info"  # /data/info 需要创建
     upgrade_define_file = Mongo.INFO_DIR + "self.info"
-    mongo_version_file = Mongo.INFO_DIR + "version.info"
     fix_file = "/opt/app/bin/Fix.py"
+    not_del_files = ["mongo-trib.log", "version.info", "ip.info"]  # 非升级过程中产生的文件
 
     def __init__(self):
         Mongo.__init__(self)
@@ -23,9 +23,17 @@ class UpgradeMongo(Mongo):
         self.mkdir_info()
 
     def mkdir_info(self):
-        cmd = "mkdir -p {info_dir}".format(
-            info_dir=self.INFO_DIR)
-        os.system(cmd)
+        if os.path.exists(self.INFO_DIR):
+            self.logger.debug("before del{}".format(os.listdir(self.INFO_DIR)))
+            # 防止版本回退，或者上次升级后，原有的存储信息会干扰升级
+            list(map(lambda file: os.remove(self.INFO_DIR + file),
+                     filter(lambda file: not (file in self.not_del_files or self.not_del_files[0] in file),
+                            os.listdir(self.INFO_DIR))))
+            self.logger.debug("after del {}".format(os.listdir(self.INFO_DIR)))
+        else:
+            cmd = "mkdir -p {info_dir}".format(
+                info_dir=self.INFO_DIR)
+            os.system(cmd)
 
     def gen_mmapv1_conf(self, auth=True, rs=True, key_file=True, port=None):
         self.logger.info('call func gen_conf with arguments [%s]', locals())
@@ -113,6 +121,12 @@ security:
             f.write(content)
 
     def wait_until_ok(self, db, nodes_count):
+        """
+        保证集群状态为 1个 master 其余全为 secondary
+        :param db:
+        :param nodes_count:
+        :return:
+        """
         for x in range(40):
             ret = db.command('replSetGetStatus', 1)
             active_nodes = list(map(lambda member: member["name"].split(":")[0],
@@ -122,6 +136,7 @@ security:
                                      filter(lambda member: member["stateStr"].upper() in ["PRIMARY"], ret["members"])))
             if len(active_nodes) == nodes_count and len(primary_nodes) == 1: return
             time.sleep(3)
+        self.logger.info("replicSet status is not normal, will quit")
         raise MongoError("集群状态不正常，不允许升级")
 
     def define_switcher(self):
@@ -381,10 +396,13 @@ security:
 
     def get_mongo_version(self):
         # 数据格式 {"version":4.0,"engine":"WiredTiger"}
-        if os.path.exists(self.mongo_version_file):
-            with open(self.mongo_version_file, "r") as f:
+        if os.path.exists(self.MONGO_VERSION_FILE):
+            with open(self.MONGO_VERSION_FILE, "r") as f:
                 content = json.loads(f.read().strip())
                 return content
+        if os.path.exists(self.MONGOD_COPY_LOG_DIR):
+            return {"version": "4.0", "engine": "WiredTiger"}
+
         return {"version": "3.4", "engine": "wiredTiger"} if "WiredTiger" in os.listdir(self.data_dir) else {
             "version": "3.0", "engine": "mmapv1"}
 
@@ -396,7 +414,7 @@ security:
         self.switcher = self.define_switcher()
         if self.switcher["instance_id"] == self.HOSTNAME:
             self.wait_until_to_ok(1)
-            self.logger.debug("All nodes have completed define switcher")
+            self.logger.info("All nodes have completed define switcher")
             self.save_switcher(self.switcher["ip"])
             self.stop_local_mongod(dir=self.start_dir)
             if self.start_dir == 32:
@@ -404,40 +422,43 @@ security:
                 self.del_data_dir()
             self.start_local_mongod(dir=self.start_dir)
             self.wait_until_backup_over()
-            self.logger.debug("Data have been backup")
+            self.logger.info("Data have been backup")
             self.sync_switcher(self.switcher["ip"])
-            self.logger.debug("Have sync switcher info to other nodes")
+            self.logger.info("Have sync switcher info to other nodes")
             self.change_self_to_primary()
-            self.logger.debug("My status is PRIMARY now")
+            self.logger.info("My status is PRIMARY now")
         else:
             self.save_to_switcher(1)
             self.wait_until_file_exists()
-            self.logger.debug("Get message：Switcher backup end")
+            self.logger.info("Get message：Switcher backup end")
             self.stop_local_mongod(dir=32)
             self.logger.debug("Stop mongod Service")
             self.wait_until_file_exists(step=2)
-            self.logger.debug("Get message: Switcher upgrade to 4.0.3，confirm it")
+            self.logger.info("Get message: Switcher upgrade to 4.0.3，confirm it")
             self.check_ismaster(ip=self.switcher["ip"])
-            self.logger.debug("Confirm Nice")
+            self.logger.info("Confirm Nice")
             self.gen_conf()
-            self.logger.debug("Change mmapv1 to wiredTiger End")
+            self.logger.info("Change mmapv1 to wiredTiger End")
             self.del_data_dir()
             self.logger.info("Del data completed End")
             self.start_local_mongod(dir=40)
-            self.logger.debug("Upgrade myself to 4.0 End")
+            self.logger.info("Upgrade myself to 4.0 End")
             self.save_to_switcher(step=2)
-            self.logger.debug("Sync result to Switcher")
+            self.logger.info("Sync result to Switcher")
+            self.save_version()
+            self.rm_fix_script()
+            self.logger.info("Fix script have remove from /data")
             sys.exit(0)
 
     def upgrade_version(self, is_one_node=False):
         self.member_to_standalone()
         self.member_to_standalone(protocol=True)
-        self.logger.debug("Upgrade myself to 4.0, Will merge nodes")
+        self.logger.info("Upgrade myself to 4.0, Will merge nodes")
         if not is_one_node:
             self.stop_local_mongod(dir=40)
             self.gen_conf()
             self.start_local_mongod(dir=40)
-            self.logger.debug("Restart End")
+            self.logger.info("Restart End")
             self.save_switcher(step=2)
             self.sync_switcher(self.switcher["ip"])
             self.wait_until_to_ok(2)
@@ -451,23 +472,25 @@ security:
         mongo_version = self.get_mongo_version()
         self.annotation_cacheSize()
         self.logger.info(json.dumps(mongo_version))
-        if mongo_version["version"] == "3.0":
-            if is_one_node:
-                sys.exit(250)
-            self.gen_mmapv1_conf()
-            self.logger.debug("Start with mongo32")
-            self.start_local_mongod(dir=32)
-        else:
-            self.switcher_role = "PRIMARY"
-            self.MONGO_VERSION = [{"version": "3.6", "dir": "36", "last_dir": 34},
-                                  {"version": "4.0", "dir": "", "last_dir": 36}]
-            self.logger.debug("Start with mongo34")
-            self.start_local_mongod(dir=34)
-            self.start_dir = 34
-            self.switcher_role = "PRIMARY"
-        self.logger.info("Will define switcher")
-        self.upgrade_engine_or_backup()
-        self.upgrade_version(is_one_node=is_one_node)
+        if mongo_version.get("version") != "4.0":
+            if mongo_version["version"] == "3.0":
+                if is_one_node:
+                    sys.exit(250)
+                self.gen_mmapv1_conf()
+                self.logger.info("Start with mongo32")
+                self.start_local_mongod(dir=32)
+            else:
+                self.switcher_role = "PRIMARY"
+                self.MONGO_VERSION = [{"version": "3.6", "dir": "36", "last_dir": 34},
+                                      {"version": "4.0", "dir": "", "last_dir": 36}]
+                self.logger.info("Start with mongo34")
+                self.start_local_mongod(dir=34)
+                self.start_dir = 34
+                self.switcher_role = "PRIMARY"
+            self.logger.info("Will define switcher")
+            self.upgrade_engine_or_backup()
+            self.upgrade_version(is_one_node=is_one_node)
+        self.save_version()
         self.rm_fix_script()
         self.logger.info("Fix script have remove from /data")
 

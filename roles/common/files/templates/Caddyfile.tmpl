@@ -1,5 +1,5 @@
 0.0.0.0:80 {
-  basicauth / {{getv "/env/caddy_user"}} {{getv "/env/caddy_password"}}
+  basicauth / "{{getv "/env/caddy_user"}}" "{{getv "/env/caddy_password"}}"
   root /data/logs
   browse
   gzip

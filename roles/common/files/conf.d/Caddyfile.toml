@@ -1,10 +1,12 @@
 [template]
 src = "Caddyfile.tmpl"
 dest = "/opt/app/conf/caddy/Caddyfile"
-mode = "0777"
+mode = "0700"
+uid = 1002
+gid = 1003
 keys = [
     "/",
 ]
 
 # caddy 服务默认是不开启的
-reload_cmd = "/opt/app/bin/restart_caddy.sh"
+reload_cmd = "/opt/app/bin/restart-caddy.sh"
