@@ -75,7 +75,11 @@
               "description": "The volume type for each instance，such as high performance，high performance plus，high capacity",
               "type": "integer",
               "default": 3,
-              "range": [0, 3, 5],
+              "range": [
+                0,
+                3,
+                5
+              ],
               "required": "yes"
             },
             {
@@ -141,6 +145,36 @@
       "type": "array",
       "properties": [
         {
+          "key": "zabbix.server.addr",
+          "label": "zabbix.server.addr.label",
+          "description": "zabbix.server.addr.description",
+          "type": "string",
+          "required": "no",
+          "default": ""
+        },
+        {
+          "key": "zabbix.agent.port",
+          "label": "zabbix.agent.port.label",
+          "description": "zabbix.agent.port.description",
+          "default": 10050,
+          "type": "integer",
+          "min": 9000,
+          "max": 65534,
+          "required": "no"
+        },
+        {
+          "key": "zabbix.agent.enabled",
+          "label": "zabbix.agent.enabled.label",
+          "description": "zabbix.agent.enabled.description",
+          "default": "no",
+          "type": "string",
+          "range": [
+            "yes",
+            "no"
+          ],
+          "required": "no"
+        },
+        {
           "key": "user",
           "label": "User",
           "description": "We'll create two accounts for you: one with readWriteAnyDatabase rights, one with root rights. If you need to use MongoDB admin rights, you can log in with the root account.",
@@ -203,7 +237,7 @@
           "label": "caddy-user",
           "description": "username for caddy-server",
           "type": "string",
-          "pattern": "",
+          "pattern": "^[^\\x20\\x22\\x27]*$",
           "default": "caddy",
           "required": "no"
         },
@@ -213,7 +247,7 @@
           "description": "password for caddy-server",
           "type": "password",
           "default": "caddy",
-          "pattern": "",
+          "pattern": "^[^\\x20\\x22\\x27]*$",
           "required": "no"
         }
       ]

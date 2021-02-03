@@ -8,7 +8,8 @@
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "upgrade_policy": [
         "appv-omli6gvn",
-        "appv-xhnpehuq"
+        "appv-xhnpehuq",
+        "appv-20u3ybdq"
     ],
    "nodes":[
       {
@@ -16,7 +17,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3a",
-            "image":"img-wrcf9rnn"
+            "image":"img-mqcwt5kv"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -41,10 +42,10 @@
                "cmd":"/opt/app/bin/MongoTrib.py init"
             },
             "start":{
-               "cmd":"mkdir -p /data/mongodb /data/info /data/logs /data/caddy/logs;/opt/app/bin/start-mongod-server.sh"
+               "cmd":"mkdir -p /data/mongodb /data/info /data/logs /data/caddy/logs /data/zabbix-agent/logs;/opt/app/bin/start-mongod-server.sh && /opt/app/bin/zabbix.sh start"
             },
             "stop":{
-               "cmd":"/opt/app/bin/stop-mongod-server.sh"
+               "cmd":"systemctl stop zabbix-agent;/opt/app/bin/stop-mongod-server.sh"
             },
             "restart":{
                "cmd":"/opt/app/bin/restart-mongod-server.sh"
@@ -74,7 +75,7 @@
             },
             "stop_caddy":{
                 "type": "custom",
-                "cmd": "systemctl stop caddy;rm -rf /data/logs/* && echo finish",
+                "cmd": "systemctl stop caddy && echo finish",
                 "timeout": 1800
             },
             "clean_log": {
@@ -84,7 +85,8 @@
             },
             "upgrade": {
                 "cmd": "/opt/app/bin/iptables-op.sh ban && /opt/app/bin/Upgrade.py && /opt/app/bin/iptables-op.sh open",
-                "post_start_service":false,"timeout":86400
+                "post_start_service":false,
+                "timeout": 86400
             }
          }
       }
@@ -92,6 +94,9 @@
    "env": {
       "user": {{env.user}},
       "passwd": {{env.passwd}},
+      "zabbix.server.addr": {{env.zabbix.server.addr}},
+      "zabbix.agent.port": {{env.zabbix.agent.port}},
+      "zabbix.agent.enabled": {{env.zabbix.agent.enabled}},
       "caddy_user":{{env.caddy_user}},
       "caddy_password":{{env.caddy_password}},
       "maxConns": {{env.maxConns}},
