@@ -113,6 +113,24 @@ EOF
   echo $code
 }
 
+rsIsMaster() {
+  local tmp=`doMongoShell "rs.isMaster()" "$@"`
+  local retcode=`echo "$tmp" | head -n1`
+  if [ "$retcode" -ne 0 ]; then return 1; fi
+
+  local okstatus=`echo "$tmp" | sed -n '2,$p' | jq ".ok"`
+  if [ "$okstatus" -ne 1 ]; then return 1; fi
+
+  local ismaster=`echo "$tmp" | sed -n '2,$p' | jq ".ismaster"`
+  # ismaster: true/false
+
+  if [ "$ismaster" = "false" ]; then reutrn 1; fi
+}
+
+rsAddNodes() {
+  :
+}
+
 # hook functions
 init() {
   if [ ! -d /data/db ];then
@@ -124,23 +142,23 @@ init() {
 
 start() {
   _start
-  if [ "$ADDING_HOSTS" = "true" ]; then return; fi
+  if [ "$ADDING_HOSTS" = "true" ]; then log "adding node $MY_SID $MY_IP"; return; fi
   sleep 1
 
   # first node do init
   local sid=`getSid ${NODE_LIST[0]}`
-  if [ "$sid" != "$MY_SID" ]; then log "replica set init: skipping $MY_SID $MY_IP"; return; fi
+  if [ "$sid" != "$MY_SID" ]; then log "replica set init: not the first, skipping $MY_SID $MY_IP"; return; fi
 
   local res=0
-  if rsNeedInit; then
-    res=`rsDoInit`
-  else
-    log "replica set init: no need, skipping"
-  fi
+  if ! rsNeedInit; then log "replica set init: no need, skipping $MY_SID $MY_IP"; return; fi
 
+  log "replica set init: DO INIT, $MY_SID $MY_IP"
+  res=`rsDoInit`
   return $res
 }
 
 scaleOut() {
-  :
+  if ! rsIsMaster; then return; fi
+
+  echo "I am the primary!"
 }
