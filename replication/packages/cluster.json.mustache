@@ -4,14 +4,15 @@
    "vxnet":{{cluster.vxnet}},
    "backup_policy": "device",
    "incremental_backup_supported": true,
+   "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "nodes":[
       {
          "role":"replica",
          "container":{
             "type":"kvm",
-            "zone":"test",
-            "image":"img-vh5nggwn"
+            "zone":"pek3a",
+            "image":"img-y2avcvi5"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -20,7 +21,7 @@
          "volume":{
             "size":{{cluster.replica.volume_size}},
             "mount_point":"/data",
-            "filesystem":"xfs"
+            "filesystem":"ext4"
          },
          "passphraseless":"ssh-rsa",
          "vertical_scaling_policy":"sequential",
@@ -102,6 +103,13 @@
       "unhealthy_threshold": 2,
       "check_cmd": "/opt/mongodb/bin/mongo-trib.py health_check",
       "action_cmd": "/opt/mongodb/bin/mongo-trib.py tackle"
+   },
+   "display_tabs": {
+      "Node Details": {
+         "cmd": "/opt/mongodb/bin/mongo-trib.py get_node_details",
+         "timeout": 10,
+         "description": ""
+      }
    },
    "monitor":{
       "enable":true,
