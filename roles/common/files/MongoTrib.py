@@ -36,7 +36,7 @@ class MongoError(Exception):
 
 
 def help():
-    print 'Guide: ./mongo-trib.py [gen_conf,init,init_replication,health_check,info,help,monitor,reconfig]'
+    print 'Guide: ./MongoTrib.py [gen_conf,init,init_replication,health_check,info,help,monitor,reconfig]'
 
 
 DEFAULT_PORT = 27017
@@ -44,7 +44,12 @@ RECONFIG_PORT = 37017
 DEFAULT_REPL_SET_NAME = 'foobar'
 DEFAULT_MAX_CONNS = 2048
 DEFAULT_OPLOG_SIZE = 1024
+# DEFAULT_CACHE_SIZE = "256 MB"
 REPL_CONF_INVALID = 'Our replica set config is invalid or we are not a member of it'
+# NO_CONFIG = "no replset config has been received"
+
+NOT_REACHABLE = "(not reachable/healthy)"
+NOT_REACHABLE_INFO = "Error connecting to {}:27017 :: caused by :: No route to host"
 
 
 class Mongo(object):
@@ -65,24 +70,34 @@ class Mongo(object):
         'storageEngine', 'network', 'locks', 'globalLock', 'extra_info', 'dur',
         'cursors', 'backgroundFlushing', 'asserts', 'opLatencies')
 
+    DATA_PATH = "/data/mongodb/"
+    INFO_DIR = "/data/info/"
+    MONGOD_COPY_LOG_DIR = "/data/logs/"
     CONF_PATH = '/etc/mongod.conf'
-    LOGGER_PATH = '/var/log/mongo-trib.log'
-    MONGOD_LOG_PATH = '/data/mongodb/mongod.log'
+    LOGGER_PATH = INFO_DIR + 'mongo-trib.log'
+    MONGOD_LOG_PATH = DATA_PATH + 'mongod.log'
     PASSWD_PATH = '/data/pitrix.pwd'
     KEY_FILE_PATH = '/etc/mongodb.key'
     IGNORE_AGENT_PATH = '/usr/local/etc/ignore_agent'
     RECONFIG_PATH = '/usr/local/etc/reconfig'
 
-    START_CMD = '/opt/mongodb/bin/start-mongod-server.sh'
-    STOP_CMD = '/opt/mongodb/bin/stop-mongod-server.sh'
+    START_CMD = '/opt/app/bin/start-mongod-server.sh'
+    STOP_CMD = '/opt/app/bin/stop-mongod-server.sh'
     HOSTNAME = socket.gethostname()
-    # LOGGER_LEVEL = logging.INFO
-    LOGGER_LEVEL = logging.DEBUG
+    LOGGER_LEVEL = logging.INFO
+    # LOGGER_LEVEL = logging.DEBUG
+
+    IP_FILE = INFO_DIR + "ip.info"
+
+    START_CADDY_CMD = "systemctl start caddy"
+    STOP_CADDY_CMD = "systemctl stop caddy"
 
     def __init__(self):
         self.logger = self.init_logger()
 
     def init_logger(self):
+        cmd = "mkdir -p " + self.INFO_DIR
+        os.system(cmd)
         rthandler = logging.handlers.RotatingFileHandler(self.LOGGER_PATH, maxBytes=20 * 1024 * 1024, backupCount=5)
         formatter = logging.Formatter('%(asctime)s -%(thread)d- [%(levelname)s] %(message)s (%(filename)s:%(lineno)d)')
         rthandler.setFormatter(formatter)
@@ -131,6 +146,16 @@ class Mongo(object):
         self._port = self.conf.get('net', {}).get('port', DEFAULT_PORT)
         self._auth = self.conf.get('security', {}).get('authorization', 'enabled') == 'enabled'
 
+    def get_cache_size(self, meta_data, version=None):
+        node_memory = int(meta_data.get("host", {}).get("memory", {}))  # 单位 mb
+        env = meta_data.get('env', {})
+        cache_size = max(round(int(env.get("cacheSizeUsage")) * node_memory / 100, 2) / 1024,
+                         1.0) if version == "3.2" else max(
+            round(int(env.get("cacheSizeUsage")) * node_memory / 100, 2) / 1024,
+            0.25)  # 见 https://docs.mongodb.com/v3.2/faq/storage/
+        cache_size = min(round(node_memory - 256,2)/1024,cache_size)
+        return cache_size
+
     def gen_conf(self, auth=True, rs=True, key_file=True, port=None):
         self.logger.info('call func gen_conf with arguments [%s]', locals())
         meta_data = self.get_meta_data()
@@ -138,22 +163,27 @@ class Mongo(object):
         max_conns = env.get('maxConns', DEFAULT_MAX_CONNS)
         oplog_size = env.get('oplogSize', DEFAULT_OPLOG_SIZE)
         new_port = env.get('port', DEFAULT_PORT)
+        cache_size = self.get_cache_size(meta_data)
         if port:
             new_port = port
         conf_content = """
 systemLog:
   destination: file
-  path: "/data/mongodb/mongod.log" 
+  path: "%(log_path)s" 
   logAppend: true 
 storage:
-  dbPath: "/data/mongodb/"
-  engine: mmapv1
+  dbPath: "%(data_path)s"
+  engine: wiredTiger
   journal:
     enabled: true
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: %(cache_size).2f
 processManagement:
    fork: true
+   pidFilePath: /data/mongodb/mongod.pid
 net:
-  # bindIp: 0.0.0.0
+  bindIp: 0.0.0.0
   port: %(port)s
   maxIncomingConnections: %(max_conns)s
 replication:
@@ -169,6 +199,9 @@ security:
             "key_file_path": self.KEY_FILE_PATH,
             "set_name": DEFAULT_REPL_SET_NAME,
             "port": new_port,
+            "cache_size": cache_size,
+            "data_path": self.DATA_PATH,
+            "log_path": self.MONGOD_LOG_PATH
         }
         if not rs:
             conf_content = conf_content.replace('replSetName', '# replSetName')
@@ -270,20 +303,35 @@ security:
         ret = c.admin.command('isMaster')
         return ret
 
+    def exist_replicaset_member_not_in_metadata(self, replica_members):
+        replica_members_ips = map(lambda member: member["name"].split(":")[0], replica_members)
+        metadata_members = self.get_members()
+        metadata_members_ips = map(lambda member: member["ip"], metadata_members)
+        for ip in replica_members_ips:
+            if ip not in metadata_members_ips:
+                return True
+        return False
+
     def detect_host_changed(self):
+        if self.check_local_mongod():
+            self.logger.info("mongod 存活")
         if os.path.isfile(self.RECONFIG_PATH):
             self.logger.info('[detect_host_changed] reconfig file exists')
             return
-
+        members = self.get_members()
+        members = [{member["node_id"]: member["ip"]} for member in members]
         try:
             c = self.connect_local()
             c.admin.command('replSetGetStatus', 1)
-        except Exception as e:
 
+        except Exception as e:
             if isinstance(e, OperationFailure) and REPL_CONF_INVALID in e.message:
                 open(self.RECONFIG_PATH, 'a').close()
                 try:
+                    self.logger.debug("We will reconfig_host")
                     self.reconfig_host()
+                    with open(self.IP_FILE, "w") as f:
+                        f.write(json.dumps(members))
                     return
                 except Exception as e:
                     raise e
@@ -291,11 +339,53 @@ security:
                     os.remove(self.RECONFIG_PATH)
 
             self.logger.info('[detect_host_changed] catch error: [%s]', e)
+        # 版本问题，mongo 4.0 无法准确检测到 ip 的变化
+        if not os.path.exists(self.IP_FILE):
+            with open(self.IP_FILE, "w") as f:
+                f.write(json.dumps(members))
+            return
+        with open(self.IP_FILE, "r") as f:
+            file_members = json.loads(f.read().strip())
+        for member in members:
+            if member not in file_members:
+                open(self.RECONFIG_PATH, 'a').close()
+                try:
+                    self.logger.debug("We will reconfig_host")
+                    self.reconfig_host()
+                    with open(self.IP_FILE, "w") as f:
+                        f.write(json.dumps(members))
+                    return
+                except Exception as e:
+                    raise e
+                finally:
+                    os.remove(self.RECONFIG_PATH)
 
     def get_env_port(self):
         meta_data = self.get_meta_data()
         env = meta_data.get('env', {})
         return env.get('port', DEFAULT_PORT)
+
+    def update_oplogsize(self):
+        """
+        {
+            "ok": 1,
+            "operationTime": Timestamp(1555421134, 1),
+            "$clusterTime": {
+                "clusterTime": Timestamp(1555421134, 1),
+                "signature": {
+                    "hash": BinData(0, "CTHfWzPHW3tbVxfGJmV8Ij5DUrk="),
+                    "keyId": NumberLong("6680481111035871234")
+                }
+            }
+        }
+        """
+        env = self.get_env()
+        oplog_size = env.get('oplogSize', DEFAULT_OPLOG_SIZE)
+        c = self.connect_local()
+        ret = c.admin.command({"replSetResizeOplog": 1, "size": int(oplog_size)})
+        if ret["ok"] != 1.0:
+            self.logger.error("Resize oplogsize fail")
+            sys.exit(1)
 
     def reconfig_host(self):
         self.stop_local_mongod()
@@ -312,6 +402,7 @@ security:
             for member in members:
                 if member_id == self.get_member_id(member):
                     member_in_db['host'] = self.get_member_host(member, port)
+
         ret = db.system.replset.update({'_id': DEFAULT_REPL_SET_NAME}, cfg)
         self.logger.info('cfg=%s, ret=%s', json_dumps(cfg), json_dumps(ret))
 
@@ -491,6 +582,7 @@ security:
         c = self.connect_primary()
         ret = c.admin.command('isMaster')
         conf['version'] = ret['setVersion'] + 1
+        conf["protocolVersion"] = 1
         primary_host = ret['primary'].split(':')[0]
 
         deleting_members = self.get_deleting_members()
@@ -549,6 +641,17 @@ security:
         ret_code, output = self.exec_cmd(self.START_CMD)
         if ret_code != 0 and ret_code != 48:
             raise MongoError('start mongod failed: [%s]' % output)
+
+    def print_connection_string(self):
+        metadata = self.get_meta_data()
+        mongo_port = metadata["env"]["port"]
+        ip_list = list(map(lambda ele:ele["ip"]+":{}".format(mongo_port),metadata["hosts"]["replica"].values()))
+        connection_string = "mongodb://{user}:[password]@{ips}/[database]?replicaSet=foobar&authSource=admin".format(user=metadata["env"]["user"],ips=",".join(ip_list))
+        connection_string_details = {
+            'labels': ['connection_string'],
+            'data': [[connection_string]]
+        }
+        print json.dumps(connection_string_details)
 
     def stop_local_mongod(self):
         ret_code, output = self.exec_cmd(self.STOP_CMD)
@@ -619,30 +722,21 @@ security:
         self.start_local_mongod()
 
     def copy_log(self):
-        files = [
-            self.MONGOD_LOG_PATH,
-        ]
+        files = filter(lambda file:"mongod.log" in file,os.listdir(self.DATA_PATH))
         self.logger.info("copy_log [%s]......", files)
-
-        ftp_dir = "/srv/ftp/"
-
-        for log_path in files:
-            basename = os.path.basename(log_path)
-            dest_path = os.path.join(ftp_dir, basename)
-            cmd = "cp %s %s && chmod 644 %s" % (log_path, dest_path, dest_path)
+        for log_file in files:
+            dest_path = os.path.join(self.MONGOD_COPY_LOG_DIR,log_file)
+            cmd = "cp %s %s && chmod 644 %s" % (self.DATA_PATH+log_file, dest_path, dest_path)
             exec_cmd(cmd)
-
+        exec_cmd(self.START_CADDY_CMD)
         return 0
 
     def clean_log(self):
-        files = [
-            self.MONGOD_LOG_PATH,
-        ]
+        files = filter(lambda file:"mongod.log" in file,os.listdir(self.DATA_PATH))
         self.logger.info("clean_log [%s]......", files)
-
-        for log_path in files:
-            cmd = "echo > %s" % log_path
-            exec_cmd(cmd)
+        map(lambda file: exec_cmd("echo > {}".format(self.DATA_PATH + file)) if self.DATA_PATH + file == self.MONGOD_LOG_PATH else os.remove(
+            self.DATA_PATH + file), files)
+        exec_cmd("rm -rf {}*".format(self.MONGOD_COPY_LOG_DIR))
 
         return 0
 
@@ -687,10 +781,14 @@ def main():
         return mongo.get_node_details()
     elif cmd == 'detect_host_changed':
         return mongo.detect_host_changed()
-    elif cmd == 'copy_log':
+    elif cmd == "copy_log":
         return mongo.copy_log()
     elif cmd == 'clean_log':
         return mongo.clean_log()
+    elif cmd == 'update_oplogsize':
+        return mongo.update_oplogsize()
+    elif cmd == 'print_connection_string':
+        return mongo.print_connection_string()
     else:
         return help()
 

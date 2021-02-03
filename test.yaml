@@ -1,0 +1,29 @@
+---
+- name: test all roles
+  hosts: all
+  gather_facts: no
+  vars:
+    caddy_version: 1.0.0-beta1
+    mongo_dir_32: mongo32
+    mongodb_version_32: mongodb-linux-x86_64-3.2.21
+    mongodb_sha_32: 632e6c83ac4d9819f239a3a51bb384912271d9f9a5e8e0c1b0f64deb6ae4263a
+    mongo_dir_34: mongo34
+    mongodb_version_34: mongodb-linux-x86_64-3.4.5
+    mongodb_sha_34: 12e05b48e450eaaea6f567750a666752f85bc468c47a9d2f4d12d9277b674cd7
+    mongo_dir_36: mongo36
+    mongodb_version_36: mongodb-linux-x86_64-3.6.8
+    mongodb_sha_36: b6061204db897087d1d9e30d11fe84280e326323f8984e48c2afcf04711e64f5
+    mongo_dir_40: mongo40
+    mongodb_version_40: mongodb-linux-x86_64-4.0.3
+    mongodb_sha_40: 4277a5098268e44e59a6f93e0be41d359132a6a469a3ee204c094fd437f57049
+    caddy_path: /etc/systemd/system/caddy.service
+#    mongodb_version: mongodb-linux-x86_64-3.4.1
+#    mongodb_sha: 7d8aa843c83ed1cbcd05b5ad8b9c9d6d46de12506c77d3c29c303fba7f19eebc
+#    mongodb_version: mongodb-linux-x86_64-3.0.15
+#    mongodb_sha: b7b6138e0c642391bb8e5a949565897860412785653057b7bb9ba20541ba4fa6
+
+
+
+  roles:
+    - common
+

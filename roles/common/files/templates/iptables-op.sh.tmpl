@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+port={{- getv "/env/port" }}
+case $1 in
+    "ban")
+        iptables -I INPUT -p tcp --dport ${port} -j DROP
+        iptables -I INPUT -s 127.0.0.1 -p tcp --dport ${port} -j ACCEPT
+        {{- range $dir := lsdir "/hosts/replica" }}
+        {{- $ip := printf "/hosts/replica/%s/ip" $dir }}
+        iptables -I INPUT -s {{getv $ip}} -p tcp --dport ${port} -j ACCEPT
+        {{- end }}
+        ;;
+    "open")
+        iptables -D INPUT -p tcp --dport ${port} -j DROP
+        iptables -D INPUT -s 127.0.0.1 -p tcp --dport ${port} -j ACCEPT
+        {{- range $dir := lsdir "/hosts/replica" }}
+        {{- $ip := printf "/hosts/replica/%s/ip" $dir }}
+        iptables -D INPUT -s {{getv $ip}} -p tcp --dport ${port} -j ACCEPT
+        {{- end }}
+        ;;
+esac

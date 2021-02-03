@@ -7,4 +7,8 @@ if [ -z "$PID" ]; then
     exit 0
 fi
 
-su mongodb -c "/opt/mongodb/bin/mongod --config /etc/mongod.conf --shutdown"
+MONGO_DIR="mongodb"
+if [ "x$1" != "x" ];then
+    MONGO_DIR="mongo$1"
+fi
+su mongodb -c "/opt/${MONGO_DIR}/bin/mongod --config /etc/mongod.conf --shutdown"

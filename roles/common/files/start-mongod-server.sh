@@ -12,11 +12,11 @@ echo never > /sys/kernel/mm/transparent_hugepage/defrag
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
 
 # change data path owner to mongodb
-chown mongodb:mongodb /data/mongodb/
+chown mongodb:mongodb /data/mongodb/ /data/logs/
 
 # check conf exists
 if [ ! -f /etc/mongod.conf ]; then
-    /opt/mongodb/bin/mongo-trib.py gen_conf
+    /opt/app/bin/MongoTrib.py gen_conf
     if [ $? -eq 0 ]; then
         echo "Generate mongod conf successful"
         exit 0
@@ -26,4 +26,8 @@ if [ ! -f /etc/mongod.conf ]; then
     fi
 fi
 
-su mongodb -c "/opt/mongodb/bin/mongod --config /etc/mongod.conf" && /opt/mongodb/bin/mongo-trib.py detect_host_changed
+MONGO_DIR="mongodb"
+if [ "x$1" != "x" ];then
+    MONGO_DIR="mongo$1"
+fi
+su mongodb -c "/opt/${MONGO_DIR}/bin/mongod --config /etc/mongod.conf" && /opt/app/bin/MongoTrib.py detect_host_changed
