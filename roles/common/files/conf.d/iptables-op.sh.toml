@@ -1,0 +1,7 @@
+[template]
+src = "iptables-op.sh.tmpl"
+dest = "/opt/app/bin/iptables-op.sh"
+mode = "0700"
+keys = [
+    "/",
+]

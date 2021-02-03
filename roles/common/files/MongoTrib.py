@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 
+import bson
+import re
 import yaml
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
@@ -96,6 +98,19 @@ class Mongo(object):
     ZABBIX_CMD = "/opt/app/bin/zabbix.sh revive"
     MONGO_VERSION_FILE = INFO_DIR + "version.info"
     CADDY_DIR = "/data/caddy"
+
+    MONITOR_INFO = {'opcounters': {'insert': None, 'delete': None, 'update': None, 'query': None},
+                    'network': {'physicalBytesOut': None, 'bytesOut': None, 'physicalBytesIn': None, 'bytesIn': None},
+                    'opcountersRepl': {'insert': None, 'delete': None, 'update': None, 'query': None},
+                    'wiredTiger': {
+                        'concurrentTransactions': {'write': {'available': None, 'out': None},
+                                                   'read': {'available': None, 'out': None}},
+                        'cache': {'tracked dirty pages in the cache': None, 'maximum bytes configured': None,
+                                  'bytes written from cache': None, 'bytes currently in the cache': None,
+                                  'bytes read into cache': None}},
+                    'connections': {'available': None, 'current': None, 'totalCreated': None},
+                    'globalLock': {'currentQueue': {'total': None, 'writers': None, 'readers': None},
+                                   'activeClients': {'total': None, 'writers': None, 'readers': None}}}
 
     def __init__(self):
         self.logger = self.init_logger()
@@ -285,22 +300,53 @@ security:
         return all_keys
 
     def parse_server_status(self, _server_status):
-        server_status = {'connections': _server_status['connections']['current'] - 1}
-        keys = ('insert', 'query', 'update', 'delete')
-        for ss_key in ('opcounters', 'opcountersRepl'):
-            server_status['total'] = 0
-            for type_key in keys:
-                key = '-'.join([ss_key, type_key])
-                server_status[key] = _server_status[ss_key][type_key]
-                server_status['total'] += server_status[key]
+        monitor_fields = {"monitor_info": self.MONITOR_INFO, "monitor_key": "", "monitor_value": None,
+                          "server_status": {}}
 
-        return server_status
+        def get_monitor_result(monitor_info, key, _server_status, server_status):
+            """
+            :param monitor_info: 监控的信息，dict
+            :param key: 监控的 key
+            :param _server_status: 从服务器获取到的信息
+            :param server_status: 用于存储最终结果
+            :return: server_status
+            """
+            # server_status 为 dict
+            for monitor_info_key, monitor_info_value in monitor_info.items():
+                monitor_fields["monitor_value"] = _server_status.get(monitor_info_key)
+                key = key[1:] if "-" in key and key[0] == "-" else key
+                monitor_fields["monitor_key"] = key + (
+                    "-" + "-".join(monitor_info_key.split(" ")) if monitor_fields["monitor_key"] else "-".join(
+                        monitor_info_key.split(" ")))
+                if monitor_info_value:
+                    get_monitor_result(monitor_info_value, monitor_fields["monitor_key"],
+                                       monitor_fields["monitor_value"],
+                                       server_status)
+                else:
+                    server_status[monitor_fields["monitor_key"]] = monitor_fields["monitor_value"]
+                    monitor_fields["monitor_value"] = None
+            return server_status
+
+        def integrate_monitor_result(monitor_result):
+            bytes_in_cache = monitor_result.pop("wiredTiger-cache-bytes-currently-in-the-cache")
+            max_cache_configured = monitor_result.pop("wiredTiger-cache-maximum-bytes-configured")
+            monitor_result["cache-usage"] = round(bytes_in_cache / float(max_cache_configured), 4) * 10000
+            for monitor_result_key, monitor_result_value in monitor_result.items():
+                if isinstance(monitor_result_value, bson.int64.Int64):
+                    monitor_result[monitor_result_key] = int(monitor_result_value)
+                if re.search("bytes", monitor_result_key, re.I):
+                    monitor_result[monitor_result_key] = int(monitor_result_value / (1024 * 1024))
+            return monitor_result
+
+        server_status = get_monitor_result(monitor_fields["monitor_info"], monitor_fields["monitor_key"],
+                                           _server_status, monitor_fields["server_status"])
+        final_monitor_result = integrate_monitor_result(server_status)
+        return final_monitor_result
 
     def get_monitor(self):
         c = self.connect_local()
-        server_status_params = self.get_server_status_params(
-            connections=1, opcounters=1, opcountersRepl=1)
-        ret = c.admin.command('serverStatus', 1, **server_status_params)
+        server_status_params = self.get_server_status_params(**dict(map(lambda x: ("x", 1), self.MONITOR_INFO.keys())))
+        ret = c.admin.command('serverStatus', 1, server_status_params)
         return self.parse_server_status(ret)
 
     def is_master(self):

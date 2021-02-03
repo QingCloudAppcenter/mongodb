@@ -9,7 +9,8 @@
    "upgrade_policy": [
         "appv-omli6gvn",
         "appv-xhnpehuq",
-        "appv-20u3ybdq"
+        "appv-20u3ybdq",
+        "appv-vfqckskh"
     ],
    "nodes":[
       {
@@ -17,7 +18,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3a",
-            "image":"img-mqcwt5kv"
+            "image":"img-yu2iozgu"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -27,7 +28,7 @@
             "size":{{cluster.replica.volume_size}},
             "class":{{cluster.replica.volume_class}},
             "mount_point":"/data",
-            "filesystem":"ext4"
+            "filesystem":"xfs"
          },
          "passphraseless":"ssh-rsa",
          "vertical_scaling_policy":"sequential",
@@ -184,12 +185,6 @@
             "statistics_type":"delta",
             "scale_factor_when_display":1
          },
-         "connections":{
-            "unit":"times",
-            "value_type":"int",
-            "statistics_type":"avg",
-            "scale_factor_when_display":1
-         },
          "opcountersRepl-insert":{
             "unit":"times",
             "value_type":"int",
@@ -207,7 +202,141 @@
             "value_type":"int",
             "statistics_type":"delta",
             "scale_factor_when_display":1
+         },
+         "cache-usage":{
+            "unit":"Pecent(%)",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":0.01
+         },
+         "wiredTiger-cache-tracked-dirty-pages-in-the-cache":{
+            "unit":"MB",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "wiredTiger-cache-bytes-read-into-cache":{
+            "unit":"MB",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "wiredTiger-cache-bytes-written-from-cache":{
+            "unit":"MB",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "wiredTiger-concurrentTransactions-write-out":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "wiredTiger-concurrentTransactions-write-available":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "wiredTiger-concurrentTransactions-read-out":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "wiredTiger-concurrentTransactions-read-available":{
+            "unit":"times",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "network-physicalBytesOut":{
+            "unit":"MB",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "network-bytesIn":{
+            "unit":"MB",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+
+         },
+         "network-bytesOut":{
+            "unit":"MB",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "network-physicalBytesIn":{
+            "unit":"MB",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "network-physicalBytesOut":{
+            "unit":"MB",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "globalLock-activeClients-writers":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "globalLock-activeClients-readers":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "globalLock-activeClients-total":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "globalLock-currentQueue-readers":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "globalLock-currentQueue-total":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "globalLock-currentQueue-writers":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "connections-current":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
+         },
+         "connections-totalCreated":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"delta",
+            "scale_factor_when_display":1
+         },
+         "connections-available":{
+            "unit":"",
+            "value_type":"int",
+            "statistics_type":"latest",
+            "scale_factor_when_display":1
          }
+
       },
       "groups":{
          "opcountersRepl":[
@@ -221,15 +350,58 @@
             "opcounters-query",
             "opcounters-update",
             "opcounters-delete"
+         ],
+         "wiredTiger-cache-usage":[
+            "cache-usage"
+         ],
+         "wiredTiger-cache":[
+            "wiredTiger-cache-tracked-dirty-pages-in-the-cache",
+            "wiredTiger-cache-bytes-read-into-cache",
+            "wiredTiger-cache-bytes-written-from-cache"
+         ],
+         "wiredTiger-concurrentTransactions":[
+            "wiredTiger-concurrentTransactions-write-out",
+            "wiredTiger-concurrentTransactions-write-available",
+            "wiredTiger-concurrentTransactions-read-out",
+            "wiredTiger-concurrentTransactions-read-available"
+         ],
+         "connections":[
+            "connections-current",
+            "connections-totalCreated",
+            "connections-available"
+         ],
+         "globalLock-activeClients":[
+            "globalLock-activeClients-writers",
+            "globalLock-activeClients-readers",
+            "globalLock-activeClients-total"
+         ],
+         "globalLock-currentQueue":[
+            "globalLock-currentQueue-readers",
+            "globalLock-currentQueue-total",
+            "globalLock-currentQueue-writers"
+         ],
+         "network":[
+            "network-bytesIn",
+            "network-physicalBytesIn",
+            "network-bytesOut",
+            "network-physicalBytesOut"
          ]
       },
       "display":[
          "opcounters",
          "opcountersRepl",
-         "connections"
+         "connections",
+         "wiredTiger-cache-usage",
+         "wiredTiger-cache",
+         "wiredTiger-concurrentTransactions",
+         "globalLock-activeClients",
+         "globalLock-currentQueue",
+         "network"
       ],
       "alarm":[
-         "connections"
+         "connections-current",
+         "connections-available",
+         "cache-usage"
       ]
    }
 }
