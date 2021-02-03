@@ -616,7 +616,7 @@ security:
 
     def save_version(self):
         with open(self.MONGO_VERSION_FILE, "w") as f:
-            f.write('{"version":4.0,"engine":"WiredTiger"}')
+            f.write('{"version":"4.0","engine":"WiredTiger"}')
 
     def init(self):
         self.save_version()

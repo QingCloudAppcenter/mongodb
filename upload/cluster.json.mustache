@@ -10,7 +10,8 @@
         "appv-omli6gvn",
         "appv-xhnpehuq",
         "appv-20u3ybdq",
-        "appv-vfqckskh"
+        "appv-vfqckskh",
+        "appv-z5mjcj2m"
     ],
    "nodes":[
       {
@@ -18,7 +19,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3a",
-            "image":"img-yu2iozgu"
+            "image":"img-17o7wx5c"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -28,7 +29,7 @@
             "size":{{cluster.replica.volume_size}},
             "class":{{cluster.replica.volume_class}},
             "mount_point":"/data",
-            "filesystem":"xfs"
+            "filesystem":"ext4"
          },
          "passphraseless":"ssh-rsa",
          "vertical_scaling_policy":"sequential",

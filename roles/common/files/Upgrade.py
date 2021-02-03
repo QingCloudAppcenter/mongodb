@@ -7,12 +7,12 @@ from MongoTrib import *
 class UpgradeMongo(Mongo):
     MONGO_VERSION = [{"version": "3.2", "dir": "32", "last_dir": None}, {"version": "3.4", "dir": "34", "last_dir": 32},
                      {"version": "3.6", "dir": "36", "last_dir": 34}, {"version": "4.0", "dir": "", "last_dir": 36}]
-    data_dir = "/data/mongodb/"
+    DATA_DIR = "/data/mongodb/"
 
-    replicaset_info_file = Mongo.INFO_DIR + "replicaSet.info"  # /data/info 需要创建
-    upgrade_define_file = Mongo.INFO_DIR + "self.info"
-    fix_file = "/opt/app/bin/Fix.py"
-    not_del_files = ["mongo-trib.log", "version.info", "ip.info"]  # 非升级过程中产生的文件
+    REPLICA_SET_INFO_FILE = Mongo.INFO_DIR + "replicaSet.info"  # /data/info 需要创建
+    UPGRADE_DEFINE_FILE = Mongo.INFO_DIR + "self.info"
+    FIX_AFTER_UPGRADE_FAIL = "/opt/app/bin/Fix.py"
+    NOT_DELETED_FILES_IN_UPGRADE = ["mongo-trib.log", "version.info", "ip.info"]  # 非升级过程中产生的文件
 
     def __init__(self):
         Mongo.__init__(self)
@@ -20,14 +20,14 @@ class UpgradeMongo(Mongo):
         self.start_dir = 32
         self.cp = False
         self.switcher = None
-        self.mkdir_info()
+        self.prepare_before_upgrade()
 
-    def mkdir_info(self):
+    def prepare_before_upgrade(self):
         if os.path.exists(self.INFO_DIR):
             self.logger.debug("before del{}".format(os.listdir(self.INFO_DIR)))
             # 防止版本回退，或者上次升级后，原有的存储信息会干扰升级
             list(map(lambda file: os.remove(self.INFO_DIR + file),
-                     filter(lambda file: not (file in self.not_del_files or self.not_del_files[0] in file),
+                     filter(lambda file: not (file in self.NOT_DELETED_FILES_IN_UPGRADE or self.NOT_DELETED_FILES_IN_UPGRADE[0] in file),
                             os.listdir(self.INFO_DIR))))
             self.logger.debug("after del {}".format(os.listdir(self.INFO_DIR)))
         else:
@@ -108,7 +108,7 @@ security:
 
     def del_data_dir(self):
         # 删除 mmap 引擎数据文件
-        cmd = "rm -rf {}*".format(self.data_dir)
+        cmd = "rm -rf {}*".format(self.DATA_DIR)
         code, output = commands.getstatusoutput(cmd)
         if code != 0:
             raise MongoError
@@ -155,7 +155,7 @@ security:
             if member["ip"] in secondary_mebers: return member
 
     def cp_fix_script(self):
-        cmd = "cp {} {}".format(self.fix_file, self.INFO_DIR)
+        cmd = "cp {} {}".format(self.FIX_AFTER_UPGRADE_FAIL, self.INFO_DIR)
         os.system(cmd)
 
     def rm_fix_script(self):
@@ -164,8 +164,8 @@ security:
 
     def save_switcher(self, ip=None, step=1):
         if step == 2:
-            if os.path.exists(self.replicaset_info_file):
-                with open(self.replicaset_info_file, "r+") as f:
+            if os.path.exists(self.REPLICA_SET_INFO_FILE):
+                with open(self.REPLICA_SET_INFO_FILE, "r+") as f:
                     content = f.read().strip()
                     content = content.replace("OK1", "OK2")
                     f.seek(0)
@@ -173,13 +173,13 @@ security:
                 return
             else:
                 raise MongoError("文件不存在")
-        with open(self.replicaset_info_file, "w") as f:
+        with open(self.REPLICA_SET_INFO_FILE, "w") as f:
             f.write(ip + "OK{}".format(step))
 
     def wait_until_file_exists(self, step=1):
         while True:
-            if os.path.exists(self.replicaset_info_file):
-                with open(self.replicaset_info_file, "r") as f:
+            if os.path.exists(self.REPLICA_SET_INFO_FILE):
+                with open(self.REPLICA_SET_INFO_FILE, "r") as f:
                     content = f.read().strip()
                     if content[-3:] == "OK{}".format(step): return
             time.sleep(3)
@@ -191,10 +191,10 @@ security:
 
                 cmd = "scp -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' \
 -o ConnectTimeout=5 -o ConnectionAttempts=3 %s root@%s:%s" % (
-                    self.replicaset_info_file, member["ip"], self.replicaset_info_file)
+                    self.REPLICA_SET_INFO_FILE, member["ip"], self.REPLICA_SET_INFO_FILE)
                 ret_code, output = self.exec_cmd(cmd)
                 if ret_code != 0:
-                    raise MongoError('sync [%s] on [%s] failed: [%s]' % (self.replicaset_info_file, ip, output))
+                    raise MongoError('sync [%s] on [%s] failed: [%s]' % (self.REPLICA_SET_INFO_FILE, ip, output))
 
     def wait_until_backup_over(self):
         while True:
@@ -363,17 +363,17 @@ security:
     def save_to_switcher(self, step):
         members = self.get_members()
         self_members = list(filter(lambda member: member['instance_id'] == self.HOSTNAME, members))
-        with open(self.upgrade_define_file, "w") as f:
+        with open(self.UPGRADE_DEFINE_FILE, "w") as f:
             f.write("STEP{}OK".format(step))
         try:
-            with open(self.replicaset_info_file, "r") as f:
+            with open(self.REPLICA_SET_INFO_FILE, "r") as f:
                 ip = f.read().strip()[:-3]
         except Exception, e:
             ip = self.define_switcher()["ip"]
         self.logger.info("Switcher ip is {}".format(ip))
         cmd = "scp -q -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' \
 -o ConnectTimeout=5 -o ConnectionAttempts=3 %s root@%s:%s%s" % (
-            self.upgrade_define_file, ip, self.INFO_DIR, self_members[0]["ip"])
+            self.UPGRADE_DEFINE_FILE, ip, self.INFO_DIR, self_members[0]["ip"])
         self.logger.debug("scp cmd: {}".format(cmd))
         retcode, output = self.exec_cmd(cmd)
         if retcode != 0:
@@ -395,7 +395,7 @@ security:
             time.sleep(3)
 
     def get_mongo_version(self):
-        # 数据格式 {"version":4.0,"engine":"WiredTiger"}
+        # 数据格式 {"version":"4.0","engine":"WiredTiger"}
         if os.path.exists(self.MONGO_VERSION_FILE):
             with open(self.MONGO_VERSION_FILE, "r") as f:
                 content = json.loads(f.read().strip())
@@ -403,7 +403,7 @@ security:
         if os.path.exists(self.MONGOD_COPY_LOG_DIR):
             return {"version": "4.0", "engine": "WiredTiger"}
 
-        return {"version": "3.4", "engine": "wiredTiger"} if "WiredTiger" in os.listdir(self.data_dir) else {
+        return {"version": "3.4", "engine": "wiredTiger"} if "WiredTiger" in os.listdir(self.DATA_DIR) else {
             "version": "3.0", "engine": "mmapv1"}
 
     def get_nodes_nums(self):
@@ -472,7 +472,8 @@ security:
         mongo_version = self.get_mongo_version()
         self.annotation_cacheSize()
         self.logger.info(json.dumps(mongo_version))
-        if mongo_version.get("version") != "4.0":
+        # Mongo 4.0.3 - QingCloud 1.3.0 该版本的version 为 4.0，非 "4.0"
+        if str(mongo_version.get("version")) != "4.0":
             if mongo_version["version"] == "3.0":
                 if is_one_node:
                     sys.exit(250)
