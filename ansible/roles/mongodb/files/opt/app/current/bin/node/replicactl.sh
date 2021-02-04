@@ -125,8 +125,15 @@ rsIsMaster() {
 rsAddNodes() {
   local tmp=''
   for ((i=0; i<${#ADDING_LIST[@]}; i++)); do
-    tmp=`doMongoShell "rs.add({host:\"$(getIp ${ADDING_LIST[i]})\",priority:0,votes:0})"`
-    echo "$tmp"
+  # tmp=`doMongoShell "rs.add({host:\"$(getIp ${ADDING_LIST[i]})\",priority:0,votes:0})"`
+    tmp=`doMongoShell "rs.add({host:\"$(getIp ${ADDING_LIST[i]})\"})"`
+  done
+}
+
+rsRmNodes() {
+  local tmp=''
+  for ((i=0; i<${#DELETING_LIST[@]}; i++)); do
+    tmp=`doMongoShell "rs.remove(\"$(getIp ${DELETING_LIST[i]}):$MY_PORT\")"`
   done
 }
 
@@ -142,7 +149,9 @@ init() {
 start() {
   _start
   if [ "$ADDING_HOSTS" = "true" ]; then log "adding node $MY_SID $MY_IP"; return; fi
-  sleep 1
+  
+  # waiting for replica to be in normal status
+  sleep 2
 
   # first node do init
   local sid=`getSid ${NODE_LIST[0]}`
@@ -157,8 +166,27 @@ start() {
 }
 
 scaleOut() {
-  if ! rsIsMaster; then return; fi
+  if ! rsIsMaster; then log "replica set scale out: not the master, skipping $MY_SID $MY_IP"; return; fi
   log "primary DO scaleOut: begin"
   rsAddNodes
   log "primary DO scaleOut: done"
+}
+
+stop() {
+  log "do stop $MY_SID $MY_IP"
+  _stop
+}
+
+scaleIn() {
+  # to-do: judge if primary node is to be deleted
+  # to-do: primary node step down first!
+  if ! rsIsMaster; then log "replica set scale in: not the master, skipping $MY_SID $MY_IP"; return; fi
+  log "primary DO scaleIn: begin"
+  rsRmNodes
+  log "primary DO scaleIn: done"
+}
+
+destroy() {
+  log "do destroy $MY_SID $MY_IP"
+  _destroy
 }
