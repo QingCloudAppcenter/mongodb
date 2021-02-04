@@ -3,6 +3,7 @@
 SYS_BADPARAMS=50
 MS_CONNECT=51
 MS_SHELLEVAL=52
+MS_SYNTAXERR=53
 MS_UNKNOWN=99
 
 # common functions
@@ -10,30 +11,23 @@ MS_UNKNOWN=99
 # doMongoShell
 # desc: call mongo shell and get the result
 # $1: script string
-# $2: connection string(option: default 127.0.0.1)
 # output: 
 #  errorcode
 #  json string
 doMongoShell() {
   local tmp
-  local para=''
-  if [ $# -eq 1 ]; then
-    para="--eval JSON.stringify($1)";
-  elif [ $# -eq 2 ]; then
-    para="--eval JSON.stringify($1) --host $2";
-  else
-    echo $SYS_BADPARAMS
-    return
-  fi
-  
-  if tmp=`$MONGOSHELL $para`; then
+  if [ "$#" -ne 1 ]; then echo $SYS_BADPARAMS; return; fi
+
+  if tmp=`echo "$1" | $MONGOSHELL`; then
     echo 0
-    echo `echo "$tmp" | sed -n '4,$p'`
+    echo `echo "$tmp" | sed '1,3d;$d'`
   else
     if [ "`echo "$tmp" | grep '^@(connect)' -o`" = '@(connect)' ]; then
       echo $MS_CONNECT
     elif [ "`echo "$tmp" | grep '^@(shell eval)' -o`" = '@(shell eval)' ]; then
       echo $MS_SHELLEVAL
+    elif [ "`echo "$tmp" | grep 'SyntaxError' -o`" = 'SyntaxError' ]; then
+      echo $MS_SYNTAXERR
     else
       echo $MS_UNKNOWN
     fi
@@ -58,10 +52,9 @@ getIp() {
 
 # rsNeedInit
 # desc: judge wether the replica set need init
-# $1: connection string(option: default 127.0.0.1)
 # $?: 0-need, 1-needn't
 rsNeedInit() {
-  local tmp=`doMongoShell "rs.status()" "$@"`
+  local tmp=`doMongoShell "JSON.stringify(rs.status())"`
   local retcode=`echo "$tmp" | head -n1`
   if [ "$retcode" -ne 0 ]; then return 1; fi
 
@@ -76,7 +69,6 @@ rsNeedInit() {
 
 # rsDoInit
 # desc: init a replica set
-# $1: connection string(option: default 127.0.0.1)
 # output:
 #  mongo shell: $?, if $? != 0 or
 #  mongo shell return code, if ok != 1 or
@@ -96,25 +88,28 @@ rsDoInit() {
   fi
 
   local initjs=$(cat <<EOF
-rs.initiate({
+JSON.stringify(rs.initiate({
   _id:"$RSNAME",
   members:[$memberstr]
-})
+}))
 EOF
 )
-  local tmp=`doMongoShell "$initjs" "$@"`
+  local tmp=`doMongoShell "$initjs"`
   local retcode=`echo "$tmp" | head -n1`
   if [ "$retcode" -ne 0 ]; then echo $retcode; return; fi
-
-  local okstatus=`echo "$tmp" | sed -n "2,$p" | jq ".ok"`
+  
+  local okstatus=`echo "$tmp" | sed -n '2,$p' | jq ".ok"`
   if [ "$okstatus" -eq 1 ]; then echo 0; return; fi
 
-  local code=`echo "$tmp" | sed -n "2,$p" | jq ".code"`
+  local code=`echo "$tmp" | sed -n '2,$p' | jq ".code"`
   echo $code
 }
 
+# rsIsMaster
+# desc: judge wether the node is master/primary
+# $?: 0-yes, 1-no
 rsIsMaster() {
-  local tmp=`doMongoShell "rs.isMaster()" "$@"`
+  local tmp=`doMongoShell "JSON.stringify(rs.isMaster())"`
   local retcode=`echo "$tmp" | head -n1`
   if [ "$retcode" -ne 0 ]; then return 1; fi
 
@@ -128,7 +123,11 @@ rsIsMaster() {
 }
 
 rsAddNodes() {
-  :
+  local tmp=''
+  for ((i=0; i<${#ADDING_LIST[@]}; i++)); do
+    tmp=`doMongoShell "rs.add({host:\"$(getIp ${ADDING_LIST[i]})\",priority:0,votes:0})"`
+    echo "$tmp"
+  done
 }
 
 # hook functions
@@ -159,6 +158,7 @@ start() {
 
 scaleOut() {
   if ! rsIsMaster; then return; fi
-
-  echo "I am the primary!"
+  log "primary DO scaleOut: begin"
+  rsAddNodes
+  log "primary DO scaleOut: done"
 }
