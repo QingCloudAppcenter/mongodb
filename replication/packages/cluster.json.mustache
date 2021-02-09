@@ -6,22 +6,6 @@
    "incremental_backup_supported": true,
    "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
-   "upgrade_policy": [
-    "appv-omli6gvn"
-   ],
-   "upgrading_policy": "in-place-sequential",
-   "in-place-upgrade-nodes": [{
-      "container":{
-         "snapshot": "ss-t5crtyv0",
-         "zone": "pek3"
-      },
-      "copy":[{
-         "mount_role": "replica",
-         "mount_point": "/upgrade",
-         "mount_options": "defaults,noatime",
-         "filesystem": "ext4"
-      }]
-   }],
    "nodes":[
       {
          "role":"replica",

@@ -2,8 +2,15 @@
 
 set -eo pipefail
 
+readonly appctlLogDir=/data/appctl/logs
+readonly appctlLogFile=$appctlLogDir/appctl.log
+
+initNode() {
+  mkdir -p $appctlLogDir
+}
+
 log() {
-  echo "$@"
+  echo "$@" >> $appctlLogFile
 }
 
 retry() {
@@ -38,19 +45,39 @@ toggleHealthCheck() {
   fi
 }
 
-checkFullyStarted() {
+getMongoPort() {
+  awk '$1=="port:" {print $2}' /etc/mongod.conf
+}
+
+runMongoCmd() {
   local passwd="$(cat /data/pitrix.pwd)"
+  local port=$(getMongoPort)
+  local uri=mongodb://qc_master:$passwd@127.0.0.1:$port/admin
+  if [ "$1" = "--local" ]; then
+    shift
+  else
+    uri=$uri?replicaSet=foobar
+  fi
+  timeout --preserve-status 3 /opt/mongodb/bin/mongo --quiet $uri --eval "$@"
+}
+
+readonly EC_NOT_READY=128
+
+checkFullyStarted() {
   local myIp=$(hostname -I | xargs)
-  local port=$(awk '$1=="port:" {print $2}' /etc/mongod.conf)
-  local cmd="rs.status().members.filter(m => m.name == '$myIp:$port' && /(PRIMARY|SECONDARY)/.test(m.stateStr)).length == 1 || quit(128)"
-  local uri=mongodb://qc_master:$passwd@localhost:$port/admin?replicaSet=foobar
-  timeout --preserve-status 3 /opt/mongodb/bin/mongo --quiet $uri --eval "$cmd"
+  local port=$(getMongoPort)
+  runMongoCmd "rs.status().members.filter(m => m.name == '$myIp:$port' && /(PRIMARY|SECONDARY)/.test(m.stateStr)).length == 1 || quit($EC_NOT_READY)"
+}
+
+isMaster() {
+  runMongoCmd --local "db.isMaster().ismaster == true || quit(1)"
 }
 
 readonly oldMongoVersion=3.4.5
 readonly newMongoVersion=3.4.17
 
 proceed() {
+  initNode
   if [ ! -d /opt/mongodb/$oldMongoVersion ]; then
     log "backup old files ..."
     mv /opt/mongodb /opt/$oldMongoVersion
@@ -73,11 +100,15 @@ main() {
 
   ${@:-proceed}
 
-  log "restarting mongodb ..."
-  /opt/mongodb/bin/restart-mongod-server.sh
+  if isMaster; then
+    log "leaving primary node as is old version, please manually restart it later."
+  else
+    log "restarting mongodb ..."
+    /opt/mongodb/bin/restart-mongod-server.sh
 
-  log "waiting mongodb to be ready ..."
-  retry 1200 3 0 checkFullyStarted
+    log "waiting mongodb to be ready ..."
+    retry 1200 3 0 checkFullyStarted
+  fi
 
   toggleHealthCheck true
 }
