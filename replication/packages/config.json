@@ -136,7 +136,7 @@
           "label": "User",
           "description": "We'll create two accounts for you: one with readWriteAnyDatabase rights, one with root rights. If you need to use MongoDB admin rights, you can log in with the root account.",
           "changeable": false,
-          "pattern": "\\w+",
+          "pattern": "^((?!root)\\w)+$",
           "type": "string",
           "required": "yes"
         },

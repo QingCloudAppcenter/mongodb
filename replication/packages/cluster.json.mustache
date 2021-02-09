@@ -11,8 +11,8 @@
          "role":"replica",
          "container":{
             "type":"kvm",
-            "zone":"pek3",
-            "image":"img-0q8x7vi5"
+            "zone":"pek3a",
+            "image":"img-i2o7whhf"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -53,10 +53,6 @@
                "nodes_to_execute_on":1,
                "order":3,
                "cmd":"/opt/mongodb/bin/mongo-trib.py reconfig"
-            },
-            "upgrade": {
-              "cmd": "/upgrade/opt/mongodb/bin/upgrade.sh",
-              "timeout": 10800
             },
             "destroy":{
                "nodes_to_execute_on":1,

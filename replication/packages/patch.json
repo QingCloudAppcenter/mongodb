@@ -2,8 +2,8 @@
     "patch_policy": [""],
     "patch_nodes": [{
         "container": {
-            "snapshot": "ss-t5crtyv0",
-            "zone": "pek3"
+            "snapshot": "ss-epbgrs13",
+            "zone": "pek3a"
         },
         "patch": [{
             "mount_role": "replica",
