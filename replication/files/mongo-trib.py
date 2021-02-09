@@ -486,7 +486,7 @@ security:
 -o ConnectTimeout=5 -o ConnectionAttempts=3 root@%s \"%s\"" % (ip, cmd)
 
     def check_local_mongod(self):
-        cmd = 'lsof -i:%s' % self.port
+        cmd = 'nc -z -v -w10 127.0.0.1 %s' % self.port
         ret_code, _ = self.exec_cmd(cmd)
         if ret_code != 0:
             self.logger.error('no process listen at %s', self.port)
