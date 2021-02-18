@@ -190,3 +190,8 @@ destroy() {
   log "do destroy $MY_SID $MY_IP"
   _destroy
 }
+
+mytest() {
+  echo ${NODE_LIST[2]}
+  echo ${NODE_LIST[@]}
+}
