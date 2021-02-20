@@ -75,17 +75,20 @@ rsNeedInit() {
 #  0
 rsDoInit() {
   local memberstr=''
-  if [ "${#NODE_LIST[@]}" -eq 1 ]; then
-      memberstr="{_id:0,host:\"$(getIp ${NODE_LIST[0]})\"}"
-  else
-      for ((i=0; i<${#NODE_LIST[@]}; i++)); do
-          if [ "$i" -eq 0 ]; then
-              memberstr="{_id:$i,host:\"$(getIp ${NODE_LIST[i]})\"}"
-          else
-              memberstr="$memberstr,{_id:$i,host:\"$(getIp ${NODE_LIST[i]})\"}"
-          fi
-      done
-  fi
+  local curmem=''
+  for ((i=0; i<${#NODE_LIST[@]}; i++)); do
+    if [ "$(getIp ${NODE_LIST[i]})" = "$MY_IP" ]; then
+      curmem="{_id:$i,host:\"$MY_IP\",priority:2}"
+    else
+      curmem="{_id:$i,host:\"$(getIp ${NODE_LIST[i]})\"}"
+    fi
+
+    if [ "$i" -eq 0 ]; then
+      memberstr=$curmem
+    else
+      memberstr="$memberstr,$curmem"
+    fi
+  done
 
   local initjs=$(cat <<EOF
 JSON.stringify(rs.initiate({
@@ -141,6 +144,10 @@ createReplKey() {
   echo "$GLOBAL_UUID" | base64 > "$MONGODB_CONF_PATH/repl.key"
 }
 
+mongodbAddFirstUser() {
+  :
+}
+
 # hook functions
 initNode() {
   _initNode
@@ -162,10 +169,14 @@ initCluster() {
 
   if [ "$ADDING_HOSTS" = "true" ]; then _initCluster; log "adding node $MY_SID $MY_IP, skipping"; return; fi
 
+log "checking need init"
+  rsNeedInit || return
+log "must init"
+
   local res=0
 
   log "replica set init: DO INIT, $MY_SID $MY_IP"
-  #res=`rsDoInit`
+  res=`rsDoInit`
 
   if [ "$res" -ne 0 ]; then log "replica set init: FAILED!"; return $res; fi
 
