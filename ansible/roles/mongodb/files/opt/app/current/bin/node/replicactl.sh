@@ -75,17 +75,20 @@ rsNeedInit() {
 #  0
 rsDoInit() {
   local memberstr=''
-  if [ "${#NODE_LIST[@]}" -eq 1 ]; then
-      memberstr="{_id:0,host:\"$(getIp ${NODE_LIST[0]})\"}"
-  else
-      for ((i=0; i<${#NODE_LIST[@]}; i++)); do
-          if [ "$i" -eq 0 ]; then
-              memberstr="{_id:$i,host:\"$(getIp ${NODE_LIST[i]})\"}"
-          else
-              memberstr="$memberstr,{_id:$i,host:\"$(getIp ${NODE_LIST[i]})\"}"
-          fi
-      done
-  fi
+  local curmem=''
+  for ((i=0; i<${#NODE_LIST[@]}; i++)); do
+    if [ "$(getIp ${NODE_LIST[i]})" = "$MY_IP" ]; then
+      curmem="{_id:$i,host:\"$MY_IP\",priority:2}"
+    else
+      curmem="{_id:$i,host:\"$(getIp ${NODE_LIST[i]})\"}"
+    fi
+
+    if [ "$i" -eq 0 ]; then
+      memberstr=$curmem
+    else
+      memberstr="$memberstr,$curmem"
+    fi
+  done
 
   local initjs=$(cat <<EOF
 JSON.stringify(rs.initiate({
@@ -137,32 +140,69 @@ rsRmNodes() {
   done
 }
 
+createReplKey() {
+  echo "$GLOBAL_UUID" | base64 > "$MONGODB_CONF_PATH/repl.key"
+}
+
+getFirstUserPasswd() {
+  echo "111111" # just for testing
+}
+
+mongodbAddFirstUser() {
+  local jsstr=$(cat <<EOF
+admin = db.getSiblingDB("admin")
+admin.createUser(
+  {
+    user: "$MONGODB_USER_SYS",
+    pwd: "$(getFirstUserPasswd)",
+    roles: [ { role: "root", db: "admin" } ]
+  }
+)
+EOF
+)
+  local tmp=`doMongoShell "$jsstr"`
+  local retcode=`echo "$tmp" | head -n1`
+  echo $retcode
+}
+
 # hook functions
-init() {
-  if [ ! -d /data/db ];then
+initNode() {
+  _initNode
+  log "create /data/db"
+  if [ ! -d /data/db ]; then
     mkdir /data/db
     chown mongod:svc /data/db
   fi
-  _init
+  log "create repl.key"
+  if [ ! -f $MONGODB_CONF_PATH/repl.key ]; then
+    createReplKey
+    chown mongod:svc $MONGODB_CONF_PATH/repl.key
+    chmod 400 $MONGODB_CONF_PATH/repl.key
+  fi
 }
 
-start() {
-  _start
-  if [ "$ADDING_HOSTS" = "true" ]; then log "adding node $MY_SID $MY_IP"; return; fi
-  
-  # waiting for replica to be in normal status
-  sleep 2
+initCluster() {
+  isClusterInitialized && return
 
-  # first node do init
-  local sid=`getSid ${NODE_LIST[0]}`
-  if [ "$sid" != "$MY_SID" ]; then log "replica set init: not the first, skipping $MY_SID $MY_IP"; return; fi
+  if [ "$ADDING_HOSTS" = "true" ]; then _initCluster; log "adding node $MY_SID $MY_IP, skipping"; return; fi
+
+log "checking need init"
+  rsNeedInit || return
+log "must init"
 
   local res=0
-  if ! rsNeedInit; then log "replica set init: no need, skipping $MY_SID $MY_IP"; return; fi
 
   log "replica set init: DO INIT, $MY_SID $MY_IP"
   res=`rsDoInit`
-  return $res
+  if [ "$res" -ne 0 ]; then log "replica set init: FAILED!"; return $res; fi
+  # wait for replica set initalization
+  sleep 5s
+
+  log "replica set init: Add First User, $MY_SID $MY_IP"
+  res=`mongodbAddFirstUser`
+  if [ "$res" -ne 0 ]; then log "add first user: FAILED! code: $res"; return $res; fi
+
+  _initCluster
 }
 
 scaleOut() {
@@ -189,4 +229,9 @@ scaleIn() {
 destroy() {
   log "do destroy $MY_SID $MY_IP"
   _destroy
+}
+
+mytest() {
+  echo ${NODE_LIST[2]}
+  echo ${NODE_LIST[@]}
 }
