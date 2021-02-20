@@ -144,8 +144,25 @@ createReplKey() {
   echo "$GLOBAL_UUID" | base64 > "$MONGODB_CONF_PATH/repl.key"
 }
 
+getFirstUserPasswd() {
+  echo "111111" # just for testing
+}
+
 mongodbAddFirstUser() {
-  :
+  local jsstr=$(cat <<EOF
+admin = db.getSiblingDB("admin")
+admin.createUser(
+  {
+    user: "$MONGODB_USER_SYS",
+    pwd: "$(getFirstUserPasswd)",
+    roles: [ { role: "root", db: "admin" } ]
+  }
+)
+EOF
+)
+  local tmp=`doMongoShell "$jsstr"`
+  local retcode=`echo "$tmp" | head -n1`
+  echo $retcode
 }
 
 # hook functions
@@ -177,8 +194,13 @@ log "must init"
 
   log "replica set init: DO INIT, $MY_SID $MY_IP"
   res=`rsDoInit`
-
   if [ "$res" -ne 0 ]; then log "replica set init: FAILED!"; return $res; fi
+  # wait for replica set initalization
+  sleep 5s
+
+  log "replica set init: Add First User, $MY_SID $MY_IP"
+  res=`mongodbAddFirstUser`
+  if [ "$res" -ne 0 ]; then log "add first user: FAILED! code: $res"; return $res; fi
 
   _initCluster
 }
