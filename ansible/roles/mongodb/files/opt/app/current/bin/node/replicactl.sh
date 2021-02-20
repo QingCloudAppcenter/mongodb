@@ -137,13 +137,23 @@ rsRmNodes() {
   done
 }
 
+createReplKey() {
+  echo "$GLOBAL_UUID" | base64 > "$MONGODB_CONF_PATH/repl.key"
+}
+
 # hook functions
 initNode() {
   _initNode
   log "create /data/db"
-  if [ ! -d /data/db ];then
+  if [ ! -d /data/db ]; then
     mkdir /data/db
     chown mongod:svc /data/db
+  fi
+  log "create repl.key"
+  if [ ! -f $MONGODB_CONF_PATH/repl.key ]; then
+    createReplKey
+    chown mongod:svc $MONGODB_CONF_PATH/repl.key
+    chmod 400 $MONGODB_CONF_PATH/repl.key
   fi
 }
 
@@ -155,7 +165,7 @@ initCluster() {
   local res=0
 
   log "replica set init: DO INIT, $MY_SID $MY_IP"
-  res=`rsDoInit`
+  #res=`rsDoInit`
 
   if [ "$res" -ne 0 ]; then log "replica set init: FAILED!"; return $res; fi
 
