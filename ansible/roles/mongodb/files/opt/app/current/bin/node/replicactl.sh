@@ -138,31 +138,28 @@ rsRmNodes() {
 }
 
 # hook functions
-init() {
+initNode() {
+  _initNode
+  log "create /data/db"
   if [ ! -d /data/db ];then
     mkdir /data/db
     chown mongod:svc /data/db
   fi
-  _init
 }
 
-start() {
-  _start
-  if [ "$ADDING_HOSTS" = "true" ]; then log "adding node $MY_SID $MY_IP"; return; fi
-  
-  # waiting for replica to be in normal status
-  sleep 2
+initCluster() {
+  isClusterInitialized && return
 
-  # first node do init
-  local sid=`getSid ${NODE_LIST[0]}`
-  if [ "$sid" != "$MY_SID" ]; then log "replica set init: not the first, skipping $MY_SID $MY_IP"; return; fi
+  if [ "$ADDING_HOSTS" = "true" ]; then _initCluster; log "adding node $MY_SID $MY_IP, skipping"; return; fi
 
   local res=0
-  if ! rsNeedInit; then log "replica set init: no need, skipping $MY_SID $MY_IP"; return; fi
 
   log "replica set init: DO INIT, $MY_SID $MY_IP"
   res=`rsDoInit`
-  return $res
+
+  if [ "$res" -ne 0 ]; then log "replica set init: FAILED!"; return $res; fi
+
+  _initCluster
 }
 
 scaleOut() {

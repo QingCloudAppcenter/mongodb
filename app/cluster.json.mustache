@@ -10,9 +10,8 @@
       "container":{
          "type":"kvm",
          "zone":"sh1",
-         "image":"img-ki079ldr"
+         "image":"img-wr0smcdq"
       },
-      "user_access": true,
       "instance_class":{{cluster.replica.instance_class}},
       "count":{{cluster.replica.count}},
       "cpu":{{cluster.replica.cpu}},
@@ -46,7 +45,11 @@
 		}
 	}],
    "env": {
-      "rsname": {{env.rsname}},
+      "user": {{env.user}},
+      "passwd": {{env.passwd}},
+      "maxConns": {{env.maxConns}},
+      "oplogSize": {{env.oplogSize}},
+      "rsName": {{env.rsName}},
       "port": {{env.port}}
    }
 }

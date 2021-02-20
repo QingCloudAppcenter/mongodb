@@ -2,3 +2,4 @@ hosts
 **/tmp
 *.tar.gz
 debug*.yml
+*.key

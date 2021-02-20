@@ -109,11 +109,29 @@
             "type": "array",
             "properties": [
                 {
-                    "key": "rsname",
+                    "key": "user",
+                    "label": "User",
+                    "description": "We'll create two accounts for you: one with readWriteAnyDatabase rights, one with root rights. If you need to use MongoDB admin rights, you can log in with the root account.",
+                    "changeable": false,
+                    "pattern": "^((?!root)\\w)+$",
+                    "type": "string",
+                    "required": "yes"
+                },
+                {
+                    "key": "passwd",
+                    "label": "Password",
+                    "description": "Password should have at least eight digits, including uppercase, lowercase letters and numbers. Please keep your password carefully!",
+                    "changeable": false,
+                    "type": "password",
+                    "pattern": "(?=.*\\d)(?=.*[a-z])(?=.*[A-Z]).{8,32}",
+                    "required": "yes"
+                },
+                {
+                    "key": "rsName",
                     "label": "Replica set name",
                     "description": "Replica set name",
                     "type": "string",
-                    "default": "rs0",
+                    "default": "foobar",
                     "required": "yes"
                 },
                 {
@@ -123,6 +141,26 @@
                     "type": "integer",
                     "default": 27017,
                     "required": "yes"
+                },
+                {
+                    "key": "maxConns",
+                    "label": "maxConns",
+                    "description": "max number of simultaneous connections",
+                    "type": "integer",
+                    "default": 2048,
+                    "max": 20480,
+                    "min": 1024,
+                    "required": "no"
+                },
+                {
+                    "key": "oplogSize",
+                    "label": "oplogSize",
+                    "description": "size to use (in MiB) for replication op",
+                    "type": "integer",
+                    "default": 1024,
+                    "max": 10240,
+                    "min": 1024,
+                    "required": "no"
                 }
             ]
         }

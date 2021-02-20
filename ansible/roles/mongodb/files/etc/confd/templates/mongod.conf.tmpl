@@ -1,10 +1,16 @@
 net:
     bindIp: 0.0.0.0
     port: {{getv "/env/port"}}
+    maxIncomingConnections: {{getv "/env/maxConns"}}
 storage:
     dbPath: /data/db
+    engine: wiredTiger
+    journal:
+        enabled: true
 systemLog:
     destination: file
     path: /data/db/mongod.log
+    logAppend: true
 replication:
-    replSetName: {{getv "/env/rsname"}}
+    replSetName: {{getv "/env/rsName"}}
+    oplogSizeMB: {{getv "/env/oplogSize"}}
