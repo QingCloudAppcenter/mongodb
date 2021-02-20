@@ -1,0 +1,29 @@
+---
+- name: create user mongod
+  user:
+    name: mongod
+    groups: svc
+    shell: /sbin/nologin
+    create_home: false
+- name: install mongodb
+  include_role:
+    name: install-1.0.5
+  vars:
+    opts:
+      pkg_name: mongodb
+      pkg_version: "{{ mongodb_version }}"
+      pkg_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-{{ mongodb_version }}.tgz
+      pkg_type: tgz
+      creates: bin
+      extracts: yes
+- name: copy appctl conf files
+  copy:
+    src: opt/app/
+    dest: /opt/app/
+    owner: root
+    group: svc
+    mode: preserve
+    directory_mode: u=rwx,g=rx,o=
+- name: install confd files
+  include_role:
+    name: confd-files-1.0.9

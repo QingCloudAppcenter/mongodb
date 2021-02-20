@@ -1,9 +1,0 @@
-[template]
-src = "ssh-iptables-op.sh.tmpl"
-dest = "/opt/app/bin/ssh-iptables-op.sh"
-mode = "0700"
-keys = [
-    "/",
-]
-
-reload_cmd = "/opt/app/bin/ssh-iptables-op.sh exec_copy_file;/opt/app/bin/ssh-iptables-op.sh ban"

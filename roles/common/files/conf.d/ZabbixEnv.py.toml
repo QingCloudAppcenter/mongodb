@@ -1,7 +1,0 @@
-[template]
-src = "ZabbixEnv.py.tmpl"
-dest = "/opt/app/bin/ZabbixEnv.py"
-mode = "0700"
-keys = [
-    "/",
-]

@@ -1,0 +1,51 @@
+{
+   "name":{{cluster.name}},
+   "description":{{cluster.description}},
+   "vxnet":{{cluster.vxnet}},
+   "backup_policy": "device",
+   "incremental_backup_supported": true,
+   "advanced_actions": ["change_vxnet", "scale_horizontal"],
+   "nodes":[
+      {
+         "role":"replica",
+         "container":{
+            "type":"kvm",
+            "zone":"sh1",
+            "image":"img-fq5bvndn"
+         },
+         "user_access": true,
+         "instance_class":{{cluster.replica.instance_class}},
+         "count":{{cluster.replica.count}},
+         "cpu":{{cluster.replica.cpu}},
+         "memory":{{cluster.replica.memory}},
+         "volume":{
+            "size":{{cluster.replica.volume_size}},
+            "mount_point":"/data",
+            "filesystem":"xfs"
+         },
+         "services": {
+			"init": {
+            "cmd": "appctl init"
+			},
+			"start": {
+				"cmd": "appctl start"
+			},
+			"stop": {
+				"cmd": "appctl stop"
+			},
+			"scale_out": {
+				"cmd": "appctl scaleOut"
+			},
+			"scale_in": {
+				"cmd": "appctl scaleIn"
+			},
+			"destroy": {
+				"cmd": "appctl destroy"
+			}
+		}
+	}],
+   "env": {
+      "rsname": {{env.rsname}},
+      "port": {{env.port}}
+   }
+}

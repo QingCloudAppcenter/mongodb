@@ -1,0 +1,10 @@
+net:
+    bindIp: {{getv "/host/ip"}},127.0.0.1
+    port: {{getv "/env/port"}}
+storage:
+    dbPath: /data/db
+systemLog:
+    destination: file
+    path: /data/db/mongod.log
+replication:
+    replSetName: {{getv "/env/rsname"}}
