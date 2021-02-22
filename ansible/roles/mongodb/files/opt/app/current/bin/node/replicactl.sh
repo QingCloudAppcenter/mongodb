@@ -173,7 +173,7 @@ getFirstUserPasswd() {
 rsIsMyStateOK() {
   local tmp=$(runMongoCmd "JSON.stringify(rs.status())")
   local state=$(echo "$tmp" | jq ".myState")
-  log "$tmp"
+
   if [ "$state" -ne 1 ]; then return 1; fi
 }
 
@@ -190,6 +190,28 @@ admin.createUser(
 EOF
 )
   runMongoCmd "$jsstr"
+}
+
+mongodbAddCustomUser() {
+  local jsstr=$(cat <<EOF
+admin = db.getSiblingDB("admin")
+admin.createUser(
+  {
+    user: "$MONGODB_USER_ROOT",
+    pwd: "$MONGODB_USER_PASSWD",
+    roles: [ { role: "root", db: "admin" } ]
+  }
+)
+admin.createUser(
+  {
+    user: "$MONGODB_USER_CUSTOM",
+    pwd: "$MONGODB_USER_PASSWD",
+    roles: [ { role: "readWriteAnyDatabase", db: "admin" } ]
+  }
+)
+EOF
+)
+  runMongoCmd "$jsstr" "$qc_master" "$(getFirstUserPasswd)"
 }
 
 # hook functions
@@ -228,6 +250,12 @@ log "must init"
 
   log "replica set init: Add First User, $MY_SID $MY_IP"
   mongodbAddFirstUser
+
+  log "replica set init: Add Custom User, $MY_SID $MY_IP"
+  mongodbAddCustomUser
+
+  log "replica set init: Reset Primary Node's priority, $MY_SID $MY_IP"
+  # to-do something
 
   _initCluster
 }
