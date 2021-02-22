@@ -34,6 +34,28 @@ doMongoShell() {
   fi
 }
 
+# runMongoCmd
+# desc run mongo shell
+# $1: script string
+# $2/$3: username/passwd (option)
+# $4: ip (option)
+runMongoCmd() {
+  if [ $# -ne 1 ] && [ $# -ne 3 ] && [ $# -ne 4 ]; then return 1; fi
+
+  local cmd="/opt/mongodb/current/bin/mongo --quiet --port $MY_PORT"
+  local jsstr="$1"
+  
+  shift
+  if [ $# -gt 0 ]; then
+    cmd="$cmd --username $1 --password $2 --authenticationDatabase admin"
+    shift 2
+    if [ $# -ne 0 ]; then
+      cmd="$cmd --host $1"
+    fi
+  fi
+  timeout --preserve-status 5 echo "$jsstr" | $cmd
+}
+
 # getSid
 # desc: get sid from NODE_LIST string
 # $1: a NODE_LIST item (5|192.168.1.2)
@@ -196,7 +218,7 @@ log "must init"
   res=`rsDoInit`
   if [ "$res" -ne 0 ]; then log "replica set init: FAILED!"; return $res; fi
   # wait for replica set initalization
-  sleep 5s
+  sleep 15s
 
   log "replica set init: Add First User, $MY_SID $MY_IP"
   res=`mongodbAddFirstUser`
@@ -232,6 +254,16 @@ destroy() {
 }
 
 mytest() {
-  echo ${NODE_LIST[2]}
-  echo ${NODE_LIST[@]}
+  local jsstr=$(cat <<EOF
+admin = db.getSiblingDB("admin")
+admin.createUser(
+  {
+    user: "user1",
+    pwd: "111111",
+    roles: [ { role: "root", db: "admin" } ]
+  }
+)
+EOF
+)
+  runMongoCmd "$jsstr" qc_master 111111
 }
