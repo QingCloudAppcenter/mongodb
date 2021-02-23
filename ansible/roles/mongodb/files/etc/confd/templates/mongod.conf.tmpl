@@ -8,9 +8,7 @@ storage:
     journal:
         enabled: true
 systemLog:
-    destination: file
-    path: /data/db/mongod.log
-    logAppend: true
+    destination: syslog
 replication:
     replSetName: {{getv "/env/rsName"}}
     oplogSizeMB: {{getv "/env/oplogSize"}}

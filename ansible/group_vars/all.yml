@@ -1,4 +1,4 @@
 ---
-mongodb_version: 3.4.17
+mongodb_version: 4.0.3
 app_version: 1.0.0
-local_cache_path: /tmp
+local_cache_path: "~/.ansible/cache"

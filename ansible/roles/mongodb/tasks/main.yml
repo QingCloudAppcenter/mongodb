@@ -5,6 +5,11 @@
     groups: svc
     shell: /sbin/nologin
     create_home: false
+- name: install libcurl4-openssl-dev # mongodb 4.0.3
+  apt:
+    name: libcurl4-openssl-dev
+    update_cache: yes
+    state: latest
 - name: install mongodb
   include_role:
     name: install-1.0.5

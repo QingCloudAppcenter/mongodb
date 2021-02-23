@@ -47,12 +47,13 @@ runMongoCmd() {
   
   shift
   if [ $# -gt 0 ]; then
-    cmd="$cmd --username $1 --password $2 --authenticationDatabase admin"
+    cmd="$cmd --authenticationDatabase admin --username $1 --password $2"
     shift 2
     if [ $# -ne 0 ]; then
       cmd="$cmd --host $1"
     fi
   fi
+  #echo "$jsstr" \| $cmd
   timeout --preserve-status 5 echo "$jsstr" | $cmd
 }
 
@@ -90,11 +91,7 @@ rsNeedInit() {
 }
 
 # rsDoInit
-# desc: init a replica set
-# output:
-#  mongo shell: $?, if $? != 0 or
-#  mongo shell return code, if ok != 1 or
-#  0
+# desc: init a replica set, the node runs this function gets proirity 2, other nodes' proirity is 1
 rsDoInit() {
   local memberstr=''
   local curmem=''
@@ -113,21 +110,13 @@ rsDoInit() {
   done
 
   local initjs=$(cat <<EOF
-JSON.stringify(rs.initiate({
+rs.initiate({
   _id:"$RSNAME",
   members:[$memberstr]
-}))
+})
 EOF
 )
-  local tmp=`doMongoShell "$initjs"`
-  local retcode=`echo "$tmp" | head -n1`
-  if [ "$retcode" -ne 0 ]; then echo $retcode; return; fi
-  
-  local okstatus=`echo "$tmp" | sed -n '2,$p' | jq ".ok"`
-  if [ "$okstatus" -eq 1 ]; then echo 0; return; fi
-
-  local code=`echo "$tmp" | sed -n '2,$p' | jq ".code"`
-  echo $code
+  runMongoCmd "$initjs"
 }
 
 # rsIsMaster
@@ -211,7 +200,23 @@ admin.createUser(
 )
 EOF
 )
-  runMongoCmd "$jsstr" "$qc_master" "$(getFirstUserPasswd)"
+  runMongoCmd "$jsstr" "$MONGODB_USER_SYS" "$(getFirstUserPasswd)"
+}
+
+rsResetPriority() {
+  local jsstr=$(cat <<EOF
+cfg = rs.conf()
+myip = rs.isMaster().me
+for (i=0; i<cfg.members.length; i++) {
+  if (cfg.members[i].host == myip) {
+    break
+  }
+}
+cfg.members[i].priority = 1
+rs.reconfig(cfg)
+EOF
+)
+  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getFirstUserPasswd)
 }
 
 # hook functions
@@ -235,18 +240,14 @@ initCluster() {
 
   if [ "$ADDING_HOSTS" = "true" ]; then _initCluster; log "adding node $MY_SID $MY_IP, skipping"; return; fi
 
-log "checking need init"
-  rsNeedInit || return
-log "must init"
-
   local res=0
 
   log "replica set init: DO INIT, $MY_SID $MY_IP"
-  res=`rsDoInit`
-  if [ "$res" -ne 0 ]; then log "replica set init: FAILED!"; return $res; fi
+  rsDoInit
   
-  # wait for replica set initalization
+  log "waiting for replica set initalization ..."
   retry 1200 3 0 rsIsMyStateOK
+  sleep 10s
 
   log "replica set init: Add First User, $MY_SID $MY_IP"
   mongodbAddFirstUser
@@ -255,8 +256,9 @@ log "must init"
   mongodbAddCustomUser
 
   log "replica set init: Reset Primary Node's priority, $MY_SID $MY_IP"
-  # to-do something
+  rsResetPriority
 
+  log "replica set init: All done!"
   _initCluster
 }
 
@@ -288,15 +290,16 @@ destroy() {
 
 mytest() {
   local jsstr=$(cat <<EOF
-admin = db.getSiblingDB("admin")
-admin.createUser(
-  {
-    user: "user1",
-    pwd: "111111",
-    roles: [ { role: "root", db: "admin" } ]
+cfg = rs.conf()
+myip = rs.isMaster().me
+for (i=0; i<cfg.members.length; i++) {
+  if (cfg.members[i].host == myip) {
+    break
   }
-)
+}
+cfg.members[i].priority = 1
+rs.reconfig(cfg)
 EOF
 )
-  runMongoCmd "$jsstr" qc_master 111111
+  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getFirstUserPasswd)
 }
