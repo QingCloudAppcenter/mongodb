@@ -8,32 +8,6 @@ MS_UNKNOWN=99
 
 # common functions
 
-# doMongoShell
-# desc: call mongo shell and get the result
-# $1: script string
-# output: 
-#  errorcode
-#  json string
-doMongoShell() {
-  local tmp
-  if [ "$#" -ne 1 ]; then echo $SYS_BADPARAMS; return; fi
-
-  if tmp=`echo "$1" | $MONGOSHELL`; then
-    echo 0
-    echo `echo "$tmp" | sed '1,3d;$d'`
-  else
-    if [ "`echo "$tmp" | grep '^@(connect)' -o`" = '@(connect)' ]; then
-      echo $MS_CONNECT
-    elif [ "`echo "$tmp" | grep '^@(shell eval)' -o`" = '@(shell eval)' ]; then
-      echo $MS_SHELLEVAL
-    elif [ "`echo "$tmp" | grep 'SyntaxError' -o`" = 'SyntaxError' ]; then
-      echo $MS_SYNTAXERR
-    else
-      echo $MS_UNKNOWN
-    fi
-  fi
-}
-
 # runMongoCmd
 # desc run mongo shell
 # $1: script string
@@ -73,6 +47,36 @@ getIp() {
   echo `echo $1 | cut -d'|' -f2`
 }
 
+# rsIsMasterRemote
+rsIsMasterRemote() {
+  if [ $# -ne 1 ]; then return 1; fi
+
+  local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())" "$MONGODB_USER_SYS" "$(getFirstUserPasswd)" $1)
+  local ismaster=$(echo "$tmp" | jq ".ismaster")
+  
+  if [ "$ismaster" = "false" ]; then return 1; fi
+}
+
+# sortHostList
+# $1-n: hosts array
+# output
+#  same as $1, if there's no primary member in the hosts array
+#  or primary is the last item
+sortHostList() {
+  local res=''
+  local mas=''
+  until [ $# -eq 0 ]; do
+    if rsIsMasterRemote $(getIp $1); then
+      mas=$1
+    else
+      res=$res" $1"
+    fi
+    shift
+  done
+  res=$res" $mas"
+  echo $res
+}
+
 # rsDoInit
 # desc: init a replica set, the node runs this function gets proirity 2, other nodes' proirity is 1
 rsDoInit() {
@@ -109,7 +113,7 @@ rsIsMaster() {
   local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())")
   local ismaster=$(echo "$tmp" | jq ".ismaster")
   
-  if [ "$ismaster" = "false" ]; then reutrn 1; fi
+  if [ "$ismaster" = "false" ]; then return 1; fi
 }
 
 rsAddNodes() {
@@ -260,17 +264,6 @@ destroy() {
 }
 
 mytest() {
-  local jsstr=$(cat <<EOF
-cfg = rs.conf()
-myip = rs.isMaster().me
-for (i=0; i<cfg.members.length; i++) {
-  if (cfg.members[i].host == myip) {
-    break
-  }
-}
-cfg.members[i].priority = 1
-rs.reconfig(cfg)
-EOF
-)
-  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getFirstUserPasswd)
+  local tmp=('1|172.23.4.21' '2|172.23.4.17' '3|172.23.4.18' )
+  a=($(sortHostList ${tmp[*]}))
 }
