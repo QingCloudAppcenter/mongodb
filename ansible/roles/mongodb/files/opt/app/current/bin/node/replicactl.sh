@@ -73,23 +73,6 @@ getIp() {
   echo `echo $1 | cut -d'|' -f2`
 }
 
-# rsNeedInit
-# desc: judge wether the replica set need init
-# $?: 0-need, 1-needn't
-rsNeedInit() {
-  local tmp=`doMongoShell "JSON.stringify(rs.status())"`
-  local retcode=`echo "$tmp" | head -n1`
-  if [ "$retcode" -ne 0 ]; then return 1; fi
-
-  local okstatus=`echo "$tmp" | sed -n '2,$p' | jq ".ok"`
-  if [ "$okstatus" -eq 1 ]; then return 1; fi
-
-  local code=`echo "$tmp" | sed -n '2,$p' | jq ".code"`
-  # code 94:
-  # codename: NotYetInitialized
-  if [ "$code" -ne 94 ]; then reutrn 1; fi
-}
-
 # rsDoInit
 # desc: init a replica set, the node runs this function gets proirity 2, other nodes' proirity is 1
 rsDoInit() {
@@ -123,25 +106,18 @@ EOF
 # desc: judge wether the node is master/primary
 # $?: 0-yes, 1-no
 rsIsMaster() {
-  local tmp=`doMongoShell "JSON.stringify(rs.isMaster())"`
-  local retcode=`echo "$tmp" | head -n1`
-  if [ "$retcode" -ne 0 ]; then return 1; fi
-
-  local okstatus=`echo "$tmp" | sed -n '2,$p' | jq ".ok"`
-  if [ "$okstatus" -ne 1 ]; then return 1; fi
-
-  local ismaster=`echo "$tmp" | sed -n '2,$p' | jq ".ismaster"`
-  # ismaster: true/false
-
+  local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())")
+  local ismaster=$(echo "$tmp" | jq ".ismaster")
+  
   if [ "$ismaster" = "false" ]; then reutrn 1; fi
 }
 
 rsAddNodes() {
-  local tmp=''
+  local jsstr=';'
   for ((i=0; i<${#ADDING_LIST[@]}; i++)); do
-  # tmp=`doMongoShell "rs.add({host:\"$(getIp ${ADDING_LIST[i]})\",priority:0,votes:0})"`
-    tmp=`doMongoShell "rs.add({host:\"$(getIp ${ADDING_LIST[i]})\"})"`
+    jsstr=$jsstr'rs.add({host:"'$(getIp ${ADDING_LIST[i]})'"});'
   done
+  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getFirstUserPasswd)
 }
 
 rsRmNodes() {
@@ -263,15 +239,10 @@ initCluster() {
 }
 
 scaleOut() {
-  if ! rsIsMaster; then log "replica set scale out: not the master, skipping $MY_SID $MY_IP"; return; fi
-  log "primary DO scaleOut: begin"
+  if ! rsIsMaster; then log "scale out: not the master, skipping $MY_SID $MY_IP"; return; fi
+  
+  log "primary DO scaleOut"
   rsAddNodes
-  log "primary DO scaleOut: done"
-}
-
-stop() {
-  log "do stop $MY_SID $MY_IP"
-  _stop
 }
 
 scaleIn() {
@@ -279,7 +250,7 @@ scaleIn() {
   # to-do: primary node step down first!
   if ! rsIsMaster; then log "replica set scale in: not the master, skipping $MY_SID $MY_IP"; return; fi
   log "primary DO scaleIn: begin"
-  rsRmNodes
+  #rsRmNodes
   log "primary DO scaleIn: done"
 }
 
