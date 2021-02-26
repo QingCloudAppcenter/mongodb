@@ -5,6 +5,7 @@ MS_CONNECT=51
 MS_SHELLEVAL=52
 MS_SYNTAXERR=53
 MS_UNKNOWN=99
+MS_REPLNOTREADY=97
 
 # common functions
 
@@ -27,7 +28,7 @@ runMongoCmd() {
       cmd="$cmd --host $1"
     fi
   fi
-  #echo "$jsstr" \| $cmd
+
   timeout --preserve-status 5 echo "$jsstr" | $cmd
 }
 
@@ -50,7 +51,7 @@ getIp() {
 # rsIsMasterRemote
 rsIsMasterRemote() {
   if [ $# -ne 1 ]; then return 1; fi
-  echo $1
+  
   local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())" "$MONGODB_USER_SYS" "$(getFirstUserPasswd)" $1)
   local ismaster=$(echo "$tmp" | jq ".ismaster")
   
@@ -127,9 +128,16 @@ rsRmNodes() {
   # prevent deleting nodes from being primary again
   # reconfig deleting nodes' priority to 0
   local curmaster=$(getCurrentMaster)
-  echo "$curmaster"
+  local jsstr=$(cat <<EOF
 
+EOF
+)
+
+  # wait for repliatSet's status to be ok
+
+  # change of priority may leads to re-election
   # find the primary node to do rm action
+  curmaster=$(getCurrentMaster)
 }
 
 createReplKey() {
@@ -140,11 +148,24 @@ getFirstUserPasswd() {
   echo "111111" # just for testing
 }
 
-rsIsMyStateOK() {
-  local tmp=$(runMongoCmd "JSON.stringify(rs.status())")
-  local state=$(echo "$tmp" | jq ".myState")
+# rsIsStatusOK
+# all nodes' status: primary or secondary
+# $?: 0-ok,1-not ok
+rsIsStatusOK() {
+  local jsstr=$(cat <<EOF
+members=rs.status().members
+if (members.filter(m => /(1|2)/.test(m.state)).length != ${#NODE_LIST[@]}) {
+  quit(${MS_REPLNOTREADY})
+}
+EOF
+)
 
-  if [ "$state" -ne 1 ]; then return 1; fi
+  if [ $# -lt 1 ]; then
+    runMongoCmd "$jsstr"
+  else
+    runMongoCmd "$jsstr" "$MONGODB_USER_SYS" $(getFirstUserPasswd)
+  fi
+  return $?
 }
 
 mongodbAddFirstUser() {
@@ -187,9 +208,9 @@ EOF
 rsResetPriority() {
   local jsstr=$(cat <<EOF
 cfg = rs.conf()
-myip = rs.isMaster().me
+me = rs.isMaster().me
 for (i=0; i<cfg.members.length; i++) {
-  if (cfg.members[i].host == myip) {
+  if (cfg.members[i].host == me) {
     break
   }
 }
@@ -227,8 +248,7 @@ initCluster() {
   rsDoInit
   
   log "waiting for replica set initalization ..."
-  retry 1200 3 0 rsIsMyStateOK
-  sleep 10s
+  retry 1200 3 0 rsIsStatusOK
 
   log "replica set init: Add First User, $MY_SID $MY_IP"
   mongodbAddFirstUser
