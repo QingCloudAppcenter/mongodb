@@ -50,31 +50,21 @@ getIp() {
 # rsIsMasterRemote
 rsIsMasterRemote() {
   if [ $# -ne 1 ]; then return 1; fi
-
+  echo $1
   local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())" "$MONGODB_USER_SYS" "$(getFirstUserPasswd)" $1)
   local ismaster=$(echo "$tmp" | jq ".ismaster")
   
   if [ "$ismaster" = "false" ]; then return 1; fi
 }
 
-# sortHostList
-# $1-n: hosts array
-# output
-#  same as $1, if there's no primary member in the hosts array
-#  or primary is the last item
-sortHostList() {
-  local res=''
-  local mas=''
-  until [ $# -eq 0 ]; do
-    if rsIsMasterRemote $(getIp $1); then
-      mas=$1
-    else
-      res=$res" $1"
+# getCurrentMaster
+getCurrentMaster() {
+  for((i=0; i<${#NODE_LIST[@]}; i++)); do
+    if rsIsMasterRemote $(getIp ${NODE_LIST[i]}); then
+      echo ${NODE_LIST[i]}
+      return
     fi
-    shift
   done
-  res=$res" $mas"
-  echo $res
 }
 
 # rsDoInit
@@ -84,9 +74,9 @@ rsDoInit() {
   local curmem=''
   for ((i=0; i<${#NODE_LIST[@]}; i++)); do
     if [ "$(getIp ${NODE_LIST[i]})" = "$MY_IP" ]; then
-      curmem="{_id:$i,host:\"$MY_IP\",priority:2}"
+      curmem="{_id:$i,host:\"$MY_IP:$MY_PORT\",priority:2}"
     else
-      curmem="{_id:$i,host:\"$(getIp ${NODE_LIST[i]})\"}"
+      curmem="{_id:$i,host:\"$(getIp ${NODE_LIST[i]}):$MY_PORT\"}"
     fi
 
     if [ "$i" -eq 0 ]; then
@@ -119,16 +109,27 @@ rsIsMaster() {
 rsAddNodes() {
   local jsstr=';'
   for ((i=0; i<${#ADDING_LIST[@]}; i++)); do
-    jsstr=$jsstr'rs.add({host:"'$(getIp ${ADDING_LIST[i]})'"});'
+    jsstr=$jsstr'rs.add({host:"'$(getIp ${ADDING_LIST[i]})\:$MY_PORT'"});'
   done
   runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getFirstUserPasswd)
 }
 
 rsRmNodes() {
-  local tmp=''
+  local dellist=''
+
+  #only for test
+  local DELETING_LIST=('1|172.23.4.21' '2|172.23.4.17' '3|172.23.4.18' )
+
   for ((i=0; i<${#DELETING_LIST[@]}; i++)); do
-    tmp=`doMongoShell "rs.remove(\"$(getIp ${DELETING_LIST[i]}):$MY_PORT\")"`
+    dellist=$dellist$(getIp $DELETING_LIST[i])\:$MY_PORT" "
   done
+
+  # prevent deleting nodes from being primary again
+  # reconfig deleting nodes' priority to 0
+  local curmaster=$(getCurrentMaster)
+  echo "$curmaster"
+
+  # find the primary node to do rm action
 }
 
 createReplKey() {
@@ -265,5 +266,6 @@ destroy() {
 
 mytest() {
   local tmp=('1|172.23.4.21' '2|172.23.4.17' '3|172.23.4.18' )
-  a=($(sortHostList ${tmp[*]}))
+  #a=($(sortHostList ${tmp[*]}))
+  echo ${a[*]}
 }
