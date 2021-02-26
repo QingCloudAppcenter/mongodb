@@ -48,11 +48,18 @@ getIp() {
   echo `echo $1 | cut -d'|' -f2`
 }
 
-# rsIsMasterRemote
-rsIsMasterRemote() {
-  if [ $# -ne 1 ]; then return 1; fi
+# rsIsMaster
+# desc: judge wether the node is master/primary
+# $1: node's ip (option)
+# $?: 0-yes, 1-no
+rsIsMaster() {
+  local tmp=''
+  if [ $# -eq 0 ]; then
+    tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())")
+  else
+    tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())" "$MONGODB_USER_SYS" "$(getSysUserPasswd)" $1)
+  fi
   
-  local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())" "$MONGODB_USER_SYS" "$(getSysUserPasswd)" $1)
   local ismaster=$(echo "$tmp" | jq ".ismaster")
   
   if [ "$ismaster" = "false" ]; then return 1; fi
@@ -61,7 +68,7 @@ rsIsMasterRemote() {
 # getCurrentMaster
 getCurrentMaster() {
   for((i=0; i<${#NODE_LIST[@]}; i++)); do
-    if rsIsMasterRemote $(getIp ${NODE_LIST[i]}); then
+    if rsIsMaster $(getIp ${NODE_LIST[i]}); then
       echo ${NODE_LIST[i]}
       return
     fi
@@ -97,16 +104,6 @@ EOF
   runMongoCmd "$initjs"
 }
 
-# rsIsMaster
-# desc: judge wether the node is master/primary
-# $?: 0-yes, 1-no
-rsIsMaster() {
-  local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())")
-  local ismaster=$(echo "$tmp" | jq ".ismaster")
-  
-  if [ "$ismaster" = "false" ]; then return 1; fi
-}
-
 rsAddNodes() {
   local jsstr=';'
   for ((i=0; i<${#ADDING_LIST[@]}; i++)); do
@@ -115,29 +112,88 @@ rsAddNodes() {
   runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getSysUserPasswd)
 }
 
+# sortHostList
+# $1-n: hosts array
+# output
+#  same as $1, if there's no primary member in the hosts array
+#  or primary is the last item
+sortHostList() {
+  local res=''
+  local mas=''
+  until [ $# -eq 0 ]; do
+    if rsIsMaster $(getIp $1); then
+      mas=$1
+    else
+      res=$res" $1"
+    fi
+    shift
+  done
+  res=$res" $mas"
+  echo $res
+}
+
+# rsDummyNodes
+# $1: primary ip
+# $2-x: node list, sid1|ip1 sid2|ip2
+rsDummyNodes() {
+  if [ $# -lt 2 ]; then return; fi
+
+  local master=$1
+  shift
+  local list=($@)
+  local cmpstr=''
+  for ((i=0; i<${#list[@]}; i++)); do
+    cmpstr=$cmpstr$(getIp ${list[i]})\:$MY_PORT" "
+  done
+  local jsstr=$(cat <<EOF
+tmpstr="$cmpstr"
+cfg=rs.conf()
+for(i=0;i<cfg.members.length;i++) {
+  if (tmpstr.indexOf(cfg.members[i].host) != -1) {
+    cfg.members[i].priority = 0
+  }
+}
+rs.reconfig(cfg)
+EOF
+)
+  runMongoCmd "$jsstr" "$MONGODB_USER_SYS" $(getSysUserPasswd) "$(getIp $master)"
+}
+
+rsNodeStepDown() {
+  if [ $# -ne 1 ]; then return; fi
+  if runMongoCmd "rs.stepDown()" "$MONGODB_USER_SYS" $(getSysUserPasswd) "$(getIp $1)"; then
+    :
+  fi
+}
+
 rsRmNodes() {
-  local dellist=''
+  local slist=''
+  local jsstr=''
+  local master=$(getCurrentMaster)
 
   #only for test
-  local DELETING_LIST=('1|172.23.4.21' '2|172.23.4.17' '3|172.23.4.18' )
-
-  for ((i=0; i<${#DELETING_LIST[@]}; i++)); do
-    dellist=$dellist$(getIp $DELETING_LIST[i])\:$MY_PORT" "
-  done
+  local DELETING_LIST=('2|172.23.4.12' '1|172.23.4.14' )
 
   # prevent deleting nodes from being primary again
   # reconfig deleting nodes' priority to 0
-  local curmaster=$(getCurrentMaster)
-  local jsstr=$(cat <<EOF
-
-EOF
-)
+  slist=($(sortHostList ${DELETING_LIST[@]}))
+  if [ "${slist[-1]}" != "$master" ]; then
+    # no primary node
+    rsDummyNodes "$master" $(echo ${slist[@]})
+  else
+    # include primary node
+    rsDummyNodes "$master" $(echo ${slist[@]} | cut -d' ' -f1-$((${#slist[@]}-1)))
+    rsNodeStepDown "$master"
+  fi
+  
+  #runMongoCmd "$jsstr" "$MONGODB_USER_SYS" $(getSysUserPasswd) "$master"
 
   # wait for repliatSet's status to be ok
+  # retry 1200 3 0 rsIsStatusOK y
 
   # change of priority may leads to re-election
   # find the primary node to do rm action
-  curmaster=$(getCurrentMaster)
+  # master=$(getCurrentMaster)
 }
 
 createReplKey() {
