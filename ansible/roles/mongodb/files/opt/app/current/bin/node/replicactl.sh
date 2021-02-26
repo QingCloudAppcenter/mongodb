@@ -52,7 +52,7 @@ getIp() {
 rsIsMasterRemote() {
   if [ $# -ne 1 ]; then return 1; fi
   
-  local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())" "$MONGODB_USER_SYS" "$(getFirstUserPasswd)" $1)
+  local tmp=$(runMongoCmd "JSON.stringify(rs.isMaster())" "$MONGODB_USER_SYS" "$(getSysUserPasswd)" $1)
   local ismaster=$(echo "$tmp" | jq ".ismaster")
   
   if [ "$ismaster" = "false" ]; then return 1; fi
@@ -112,7 +112,7 @@ rsAddNodes() {
   for ((i=0; i<${#ADDING_LIST[@]}; i++)); do
     jsstr=$jsstr'rs.add({host:"'$(getIp ${ADDING_LIST[i]})\:$MY_PORT'"});'
   done
-  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getFirstUserPasswd)
+  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getSysUserPasswd)
 }
 
 rsRmNodes() {
@@ -144,17 +144,19 @@ createReplKey() {
   echo "$GLOBAL_UUID" | base64 > "$MONGODB_CONF_PATH/repl.key"
 }
 
-getFirstUserPasswd() {
+getSysUserPasswd() {
   echo "111111" # just for testing
 }
 
 # rsIsStatusOK
-# all nodes' status: primary or secondary
+# all nodes' status: one: primary; others: secondary
 # $?: 0-ok,1-not ok
 rsIsStatusOK() {
   local jsstr=$(cat <<EOF
 members=rs.status().members
 if (members.filter(m => /(1|2)/.test(m.state)).length != ${#NODE_LIST[@]}) {
+  quit(${MS_REPLNOTREADY})
+} else if (members.filter(m => /(1)/.test(m.state)).length != 1) {
   quit(${MS_REPLNOTREADY})
 }
 EOF
@@ -163,7 +165,7 @@ EOF
   if [ $# -lt 1 ]; then
     runMongoCmd "$jsstr"
   else
-    runMongoCmd "$jsstr" "$MONGODB_USER_SYS" $(getFirstUserPasswd)
+    runMongoCmd "$jsstr" "$MONGODB_USER_SYS" $(getSysUserPasswd)
   fi
   return $?
 }
@@ -174,7 +176,7 @@ admin = db.getSiblingDB("admin")
 admin.createUser(
   {
     user: "$MONGODB_USER_SYS",
-    pwd: "$(getFirstUserPasswd)",
+    pwd: "$(getSysUserPasswd)",
     roles: [ { role: "root", db: "admin" } ]
   }
 )
@@ -202,7 +204,7 @@ admin.createUser(
 )
 EOF
 )
-  runMongoCmd "$jsstr" "$MONGODB_USER_SYS" "$(getFirstUserPasswd)"
+  runMongoCmd "$jsstr" "$MONGODB_USER_SYS" "$(getSysUserPasswd)"
 }
 
 rsResetPriority() {
@@ -218,7 +220,7 @@ cfg.members[i].priority = 1
 rs.reconfig(cfg)
 EOF
 )
-  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getFirstUserPasswd)
+  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getSysUserPasswd)
 }
 
 # hook functions
