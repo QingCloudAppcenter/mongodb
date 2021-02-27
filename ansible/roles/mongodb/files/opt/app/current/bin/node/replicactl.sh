@@ -136,8 +136,6 @@ sortHostList() {
 # $1: primary ip
 # $2-x: node list, sid1|ip1 sid2|ip2
 rsDummyNodes() {
-  if [ $# -lt 2 ]; then return; fi
-
   local master=$1
   shift
   local list=($@)
@@ -151,6 +149,7 @@ cfg=rs.conf()
 for(i=0;i<cfg.members.length;i++) {
   if (tmpstr.indexOf(cfg.members[i].host) != -1) {
     cfg.members[i].priority = 0
+    cfg.members[i].votes = 0
   }
 }
 rs.reconfig(cfg)
@@ -160,10 +159,13 @@ EOF
 }
 
 rsNodeStepDown() {
-  if [ $# -ne 1 ]; then return; fi
   if runMongoCmd "rs.stepDown()" "$MONGODB_USER_SYS" $(getSysUserPasswd) "$(getIp $1)"; then
     :
   fi
+}
+
+rsDoRmNodes() {
+  :
 }
 
 rsRmNodes() {
@@ -172,7 +174,7 @@ rsRmNodes() {
   local master=$(getCurrentMaster)
 
   #only for test
-  local DELETING_LIST=('2|172.23.4.12' '1|172.23.4.14' )
+  local DELETING_LIST=('2|172.23.4.12'  )
 
   # prevent deleting nodes from being primary again
   # reconfig deleting nodes' priority to 0
@@ -182,18 +184,26 @@ rsRmNodes() {
     rsDummyNodes "$master" $(echo ${slist[@]})
   else
     # include primary node
-    rsDummyNodes "$master" $(echo ${slist[@]} | cut -d' ' -f1-$((${#slist[@]}-1)))
+    if [ ${#slist[@]} -gt 1 ]; then
+      rsDummyNodes "$master" $(echo ${slist[@]} | cut -d' ' -f1-$((${#slist[@]}-1)))
+    fi
     rsNodeStepDown "$master"
+
+    # wait for replicaSet's status to be ok
+    retry 1200 3 0 rsIsStatusOK y
+
+    # dummy old primary node
+    master=$(getCurrentMaster)
+    rsDummyNodes "$master" $(echo ${slist[-1]})
   fi
-  
-  #runMongoCmd "$jsstr" "$MONGODB_USER_SYS" $(getSysUserPasswd) "$master"
 
   # wait for repliatSet's status to be ok
-  # retry 1200 3 0 rsIsStatusOK y
+  retry 1200 3 0 rsIsStatusOK y
 
   # change of priority may leads to re-election
   # find the primary node to do rm action
-  # master=$(getCurrentMaster)
+  master=$(getCurrentMaster)
+  rsDoRmNodes "$master" $(echo ${slist[@]})
 }
 
 createReplKey() {
