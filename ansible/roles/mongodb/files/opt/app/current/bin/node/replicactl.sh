@@ -165,7 +165,28 @@ rsNodeStepDown() {
 }
 
 rsDoRmNodes() {
-  :
+  local master=$1
+  shift
+  local list=($@)
+  local cmpstr=''
+  for ((i=0; i<${#list[@]}; i++)); do
+    cmpstr=$cmpstr$(getIp ${list[i]})\:$MY_PORT" "
+  done
+  local jsstr=$(cat <<EOF
+tmpstr="$cmpstr"
+members=[]
+cfg=rs.conf()
+for(i=0;i<cfg.members.length;i++) {
+  if (tmpstr.indexOf(cfg.members[i].host) != -1) {
+    continue
+  }
+  members.push(cfg.members[i])
+}
+cfg.members = members
+rs.reconfig(cfg)
+EOF
+)
+  runMongoCmd "$jsstr" "$MONGODB_USER_SYS" $(getSysUserPasswd) "$(getIp $master)"
 }
 
 rsRmNodes() {
@@ -174,16 +195,16 @@ rsRmNodes() {
   local master=$(getCurrentMaster)
 
   #only for test
-  local DELETING_LIST=('2|172.23.4.12'  )
+  #local DELETING_LIST=('2|172.23.4.12'  )
 
   # prevent deleting nodes from being primary again
-  # reconfig deleting nodes' priority to 0
+  # reconfig deleting nodes' priority = 0, votes = 0
   slist=($(sortHostList ${DELETING_LIST[@]}))
   if [ "${slist[-1]}" != "$master" ]; then
-    # no primary node
+    log "remove normal nodes ..."
     rsDummyNodes "$master" $(echo ${slist[@]})
   else
-    # include primary node
+    log "remove nodes including primary node ..."
     if [ ${#slist[@]} -gt 1 ]; then
       rsDummyNodes "$master" $(echo ${slist[@]} | cut -d' ' -f1-$((${#slist[@]}-1)))
     fi
@@ -202,6 +223,7 @@ rsRmNodes() {
 
   # change of priority may leads to re-election
   # find the primary node to do rm action
+  log "Do Remove Action!"
   master=$(getCurrentMaster)
   rsDoRmNodes "$master" $(echo ${slist[@]})
 }
@@ -319,6 +341,7 @@ initCluster() {
   retry 1200 3 0 rsIsStatusOK
 
   log "replica set init: Add First User, $MY_SID $MY_IP"
+  sleep 5s
   mongodbAddFirstUser
 
   log "replica set init: Add Custom User, $MY_SID $MY_IP"
@@ -339,11 +362,8 @@ scaleOut() {
 }
 
 scaleIn() {
-  # to-do: judge if primary node is to be deleted
-  # to-do: primary node step down first!
-  if ! rsIsMaster; then log "replica set scale in: not the master, skipping $MY_SID $MY_IP"; return; fi
   log "primary DO scaleIn: begin"
-  #rsRmNodes
+  rsRmNodes
   log "primary DO scaleIn: done"
 }
 

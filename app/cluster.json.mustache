@@ -10,7 +10,7 @@
       "container":{
          "type":"kvm",
          "zone":"sh1",
-         "image":"img-6btqpv6v"
+         "image":"img-yr6otavs"
       },
       "instance_class":{{cluster.replica.instance_class}},
       "count":{{cluster.replica.count}},
@@ -37,6 +37,7 @@
             "cmd": "appctl scaleOut"
          },
          "scale_in": {
+            "nodes_to_execute_on": 1,
             "cmd": "appctl scaleIn"
          },
          "destroy": {
