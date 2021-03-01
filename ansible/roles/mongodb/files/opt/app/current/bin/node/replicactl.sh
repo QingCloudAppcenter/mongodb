@@ -201,19 +201,23 @@ rsRmNodes() {
   # reconfig deleting nodes' priority = 0, votes = 0
   slist=($(sortHostList ${DELETING_LIST[@]}))
   if [ "${slist[-1]}" != "$master" ]; then
-    log "remove normal nodes ..."
+    log "dummy normal nodes ... $(echo ${slist[@]})"
     rsDummyNodes "$master" $(echo ${slist[@]})
   else
-    log "remove nodes including primary node ..."
+    log "dummy nodes including primary node ..."
     if [ ${#slist[@]} -gt 1 ]; then
+      log "dummy normal nodes ... $(echo ${slist[@]} | cut -d' ' -f1-$((${#slist[@]}-1)))"
       rsDummyNodes "$master" $(echo ${slist[@]} | cut -d' ' -f1-$((${#slist[@]}-1)))
     fi
+    log "primary node step down ..."
     rsNodeStepDown "$master"
 
     # wait for replicaSet's status to be ok
+    log "waiting for replicaSet's status to be ok"
     retry 1200 3 0 rsIsStatusOK y
 
     # dummy old primary node
+    log "dummy old primary node: ${slist[-1]}"
     master=$(getCurrentMaster)
     rsDummyNodes "$master" $(echo ${slist[-1]})
   fi
@@ -223,7 +227,7 @@ rsRmNodes() {
 
   # change of priority may leads to re-election
   # find the primary node to do rm action
-  log "Do Remove Action!"
+  log "Do Remove Action! $(echo ${slist[@]})"
   master=$(getCurrentMaster)
   rsDoRmNodes "$master" $(echo ${slist[@]})
 }
