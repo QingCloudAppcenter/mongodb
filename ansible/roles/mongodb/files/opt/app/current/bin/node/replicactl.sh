@@ -215,6 +215,7 @@ rsRmNodes() {
     # wait for replicaSet's status to be ok
     log "waiting for replicaSet's status to be ok"
     retry 1200 3 0 rsIsStatusOK y
+    sleep 5s
 
     # dummy old primary node
     log "dummy old primary node: ${slist[-1]}"
@@ -223,7 +224,9 @@ rsRmNodes() {
   fi
 
   # wait for repliatSet's status to be ok
+  log "waiting for replicaSet's status to be ok"
   retry 1200 3 0 rsIsStatusOK y
+  sleep 5s
 
   # change of priority may leads to re-election
   # find the primary node to do rm action
@@ -343,9 +346,9 @@ initCluster() {
   
   log "waiting for replica set initalization ..."
   retry 1200 3 0 rsIsStatusOK
+  sleep 5s
 
   log "replica set init: Add First User, $MY_SID $MY_IP"
-  sleep 5s
   mongodbAddFirstUser
 
   log "replica set init: Add Custom User, $MY_SID $MY_IP"
@@ -361,19 +364,15 @@ initCluster() {
 scaleOut() {
   if ! rsIsMaster; then log "scale out: not the master, skipping $MY_SID $MY_IP"; return; fi
   
-  log "primary DO scaleOut"
+  log "primary DO scaleOut $(echo ${ADDING_LIST[@]})"
   rsAddNodes
+  log "primary DO scaleOut: done"
 }
 
 scaleIn() {
-  log "primary DO scaleIn: begin"
+  log "primary DO scaleIn: $(echo ${DELETING_LIST[@]})"
   rsRmNodes
   log "primary DO scaleIn: done"
-}
-
-destroy() {
-  log "do destroy $MY_SID $MY_IP"
-  _destroy
 }
 
 mytest() {
