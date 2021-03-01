@@ -4,7 +4,7 @@
    "vxnet":{{cluster.vxnet}},
    "backup_policy": "device",
    "incremental_backup_supported": true,
-   "advanced_actions": ["change_vxnet", "scale_horizontal"],
+   "advanced_actions": ["scale_horizontal"],
    "nodes":[{
       "role":"replica",
       "container":{
@@ -21,6 +21,7 @@
          "mount_point":"/data",
          "filesystem":"xfs"
       },
+      "vertical_scaling_policy": "sequential",
       "services": {
          "init": {
             "post_start_service": true,
