@@ -7,6 +7,9 @@ MS_SYNTAXERR=53
 MS_UNKNOWN=99
 MS_REPLNOTREADY=97
 
+# flag files
+APPCTL_CLUSTER_SCALEVERTICAL=/data/appctl/data/cluster.scalevertical
+
 # common functions
 
 # runMongoCmd
@@ -32,12 +35,16 @@ runMongoCmd() {
   timeout --preserve-status 5 echo "$jsstr" | $cmd
 }
 
+isClusterScaleVertical() {
+  test -f $APPCTL_CLUSTER_SCALEVERTICAL
+}
+
 # getSid
 # desc: get sid from NODE_LIST string
 # $1: a NODE_LIST item (5|192.168.1.2)
 # output: sid
 getSid() {
-  echo `echo $1 | cut -d'|' -f1`
+  echo $(echo $1 | cut -d'|' -f1)
 }
 
 # getIp
@@ -45,7 +52,11 @@ getSid() {
 # $1: a NODE_LIST item (5|192.168.1.2)
 # output: ip
 getIp() {
-  echo `echo $1 | cut -d'|' -f2`
+  echo $(echo $1 | cut -d'|' -f2)
+}
+
+getNodeId() {
+  echo $(echo $1 | cut -d'|' -f3)
 }
 
 # rsIsMaster
@@ -339,6 +350,7 @@ initCluster() {
 
   if [ "$ADDING_HOSTS" = "true" ]; then _initCluster; log "adding node $MY_SID $MY_IP, skipping"; return; fi
 
+  if [ "$MY_IP" != "$(getIp ${NODE_LIST[0]})" ]; then _initCluster; log "not the first node in the node list, skipping"; return; fi
   local res=0
 
   log "replica set init: DO INIT, $MY_SID $MY_IP"
@@ -375,8 +387,60 @@ scaleIn() {
   log "primary DO scaleIn: done"
 }
 
+# health check
+check() {
+  _check
+}
+
+# revive: actions taken when the node/cluster is NOT health
+revive() {
+  _revive
+}
+
+start() {
+  _start
+  
+  if ! isClusterInitialized; then return; fi
+
+  log "cluster restart, or scale vertical, or upgrade"
+  # do some checks for sure that the cluster is ok
+  if [ isClusterScaleVertical ]; then
+    log "scale vertical ..."
+    rm -f APPCTL_CLUSTER_SCALEVERTICAL
+
+    # waiting for replicaSet's status to be ok
+    log "waiting for replicaSet's status to be ok"
+    retry 1200 3 0 rsIsStatusOK y
+    sleep 5s
+    log "stop waiting for next node's vertical scale"
+  fi
+}
+
+makeNodeList() {
+  local tmplist=($@)
+  local tmpstr=''
+  for((i=0;i<${#tmplist[@]};i++)); do
+    tmpstr="$tmpstr$(getNodeId ${tmplist[i]}),"
+  done
+  tmpstr=${tmpstr%%,}
+  echo $tmpstr
+}
+
+getActionOrder() {
+  local tmp=$(echo "$@" | cut -d':' -f2 | sed 's/^[ ]*//g')
+  tmp=${tmp%%\}}
+  if [ "$tmp" = "scale_vertical" ]; then
+    touch APPCTL_CLUSTER_SCALEVERTICAL
+    makeNodeList $(sortHostList $(echo ${NODE_LIST[@]}))
+  else
+    makeNodeList $(echo ${NODE_LIST[@]})
+  fi
+}
+
 mytest() {
-  local tmp=('1|172.23.4.21' '2|172.23.4.17' '3|172.23.4.18' )
-  #a=($(sortHostList ${tmp[*]}))
-  echo ${a[*]}
+  if [ ! isClusterInitialized ]; then
+    echo "here"
+  else
+    echo "there"
+  fi
 }
