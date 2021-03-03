@@ -2,5 +2,9 @@
 src = "mongod.conf.tmpl"
 dest = "/opt/app/current/conf/mongodb/mongod.conf"
 keys = [
-  "/",
+  "/env/maxConns",
+  "/env/oplogSize",
+  "/env/rsName",
+  "/env/port"
 ]
+reload_cmd = "appctl changeMongodbCfg"

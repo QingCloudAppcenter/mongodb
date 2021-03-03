@@ -437,6 +437,10 @@ getActionOrder() {
   fi
 }
 
+changeMongodbCfg() {
+  echo "here"
+}
+
 mytest() {
   if [ ! isClusterInitialized ]; then
     echo "here"
