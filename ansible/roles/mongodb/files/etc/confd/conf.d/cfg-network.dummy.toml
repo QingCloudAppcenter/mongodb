@@ -1,0 +1,7 @@
+[template]
+src = "cfg-network.dummy.tmpl"
+dest = "/opt/app/current/conf/mongodb/cfg-network.dummy"
+keys = [
+  "/env/port",
+]
+reload_cmd = "appctl changeCfgNetwork"

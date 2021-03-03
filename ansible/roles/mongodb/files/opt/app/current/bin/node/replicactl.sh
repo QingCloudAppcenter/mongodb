@@ -8,8 +8,8 @@ MS_UNKNOWN=99
 MS_REPLNOTREADY=97
 
 # flag files
-APPCTL_CLUSTER_SCALEVERTICAL=/data/appctl/data/cluster.scalevertical
-APPCTL_CLUSTER_STOP=/data/appctl/data/cluster.stop
+# APPCTL_CLUSTER_SCALEVERTICAL=/data/appctl/data/cluster.scalevertical
+# APPCTL_CLUSTER_STOP=/data/appctl/data/cluster.stop
 
 # common functions
 
@@ -406,20 +406,13 @@ start() {
   _start
   
   if ! isClusterInitialized; then log "It's a new node, normal start done!"; return; fi
-  if [ "$ADDING_HOSTS" = "true" ]; then log "Adding new node, it's ok to stop here!"; return; fi
 
   log "cluster restarted: scale vertical, or upgrade, or normal restart"
   # do some checks for sure that the cluster is ok
-  # if isClusterScaleVertical; then
-  #   log "scale vertical ..."
-  #   rm -f APPCTL_CLUSTER_SCALEVERTICAL
-
-  #   # waiting for replicaSet's status to be ok
-  #   log "waiting for replicaSet's status to be ok"
-  #   retry 1200 3 0 rsIsStatusOK y
-  #   sleep 5s
-  #   log "stop waiting for next node's vertical scale"
-  # fi
+  log "waiting for replicaSet's status to be ok"
+  retry 1200 3 0 rsIsStatusOK y
+  sleep 5s
+  log "replicaSet's status is ok, stop waiting"
 }
 
 stop() {
@@ -445,11 +438,11 @@ getActionOrder() {
   tmp=${tmp%%\}}
   if [ "$tmp" = "scale_vertical" ]; then
     log "get order: scale_vertical"
-    touch APPCTL_CLUSTER_SCALEVERTICAL
+    # touch $APPCTL_CLUSTER_SCALEVERTICAL
     makeNodeList $(sortHostList $(echo ${NODE_LIST[@]}))
   elif [ "$tmp" = "stop" ]; then
     log "get order: stop"
-    touch APPCTL_CLUSTER_STOP
+    # touch $APPCTL_CLUSTER_STOP
     makeNodeList $(sortHostList $(echo ${NODE_LIST[@]}))
   else
     log "get order: normal"
@@ -457,14 +450,14 @@ getActionOrder() {
   fi
 }
 
-changeMongodbCfg() {
-  log "here"
+changeCfgNormal() {
+  log "cfg normal"
+}
+
+changeCfgNetwork() {
+  log "cfg network"
 }
 
 mytest() {
-  if ! isClusterInitialized; then
-    echo "here"
-  else
-    echo "there"
-  fi
+  touch $APPCTL_CLUSTER_SCALEVERTICAL
 }

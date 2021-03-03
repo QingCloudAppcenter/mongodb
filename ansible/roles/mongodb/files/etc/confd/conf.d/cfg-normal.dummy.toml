@@ -1,0 +1,9 @@
+[template]
+src = "cfg-normal.dummy.tmpl"
+dest = "/opt/app/current/conf/mongodb/cfg-normal.dummy"
+keys = [
+  "/env/maxConns",
+  "/env/oplogSize",
+  "/env/rsName",
+]
+reload_cmd = "appctl changeCfgNormal"
