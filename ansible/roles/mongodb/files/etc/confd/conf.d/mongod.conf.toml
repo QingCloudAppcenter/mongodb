@@ -5,6 +5,6 @@ keys = [
   "/env/maxConns",
   "/env/oplogSize",
   "/env/rsName",
-  "/env/port"
+  "/env/port",
 ]
 reload_cmd = "appctl changeMongodbCfg"

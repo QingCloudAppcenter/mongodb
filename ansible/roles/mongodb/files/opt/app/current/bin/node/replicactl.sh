@@ -9,6 +9,7 @@ MS_REPLNOTREADY=97
 
 # flag files
 APPCTL_CLUSTER_SCALEVERTICAL=/data/appctl/data/cluster.scalevertical
+APPCTL_CLUSTER_STOP=/data/appctl/data/cluster.stop
 
 # common functions
 
@@ -37,6 +38,10 @@ runMongoCmd() {
 
 isClusterScaleVertical() {
   test -f $APPCTL_CLUSTER_SCALEVERTICAL
+}
+
+isClusterStop() {
+  test -f $APPCTL_CLUSTER_STOP
 }
 
 # getSid
@@ -400,20 +405,29 @@ revive() {
 start() {
   _start
   
-  if ! isClusterInitialized; then return; fi
+  if ! isClusterInitialized; then log "It's a new node, normal start done!"; return; fi
+  if [ "$ADDING_HOSTS" = "true" ]; then log "Adding new node, it's ok to stop here!"; return; fi
 
-  log "cluster restart, or scale vertical, or upgrade"
+  log "cluster restarted: scale vertical, or upgrade, or normal restart"
   # do some checks for sure that the cluster is ok
-  if [ isClusterScaleVertical ]; then
-    log "scale vertical ..."
-    rm -f APPCTL_CLUSTER_SCALEVERTICAL
+  # if isClusterScaleVertical; then
+  #   log "scale vertical ..."
+  #   rm -f APPCTL_CLUSTER_SCALEVERTICAL
 
-    # waiting for replicaSet's status to be ok
-    log "waiting for replicaSet's status to be ok"
-    retry 1200 3 0 rsIsStatusOK y
-    sleep 5s
-    log "stop waiting for next node's vertical scale"
+  #   # waiting for replicaSet's status to be ok
+  #   log "waiting for replicaSet's status to be ok"
+  #   retry 1200 3 0 rsIsStatusOK y
+  #   sleep 5s
+  #   log "stop waiting for next node's vertical scale"
+  # fi
+}
+
+stop() {
+  if isClusterStop; then
+    log "stop cluster: node $MY_SID $MY_IP $MY_PORT"
+    rm -f APPCTL_CLUSTER_STOP
   fi
+  _stop
 }
 
 makeNodeList() {
@@ -430,19 +444,25 @@ getActionOrder() {
   local tmp=$(echo "$@" | cut -d':' -f2 | sed 's/^[ ]*//g')
   tmp=${tmp%%\}}
   if [ "$tmp" = "scale_vertical" ]; then
+    log "get order: scale_vertical"
     touch APPCTL_CLUSTER_SCALEVERTICAL
     makeNodeList $(sortHostList $(echo ${NODE_LIST[@]}))
+  elif [ "$tmp" = "stop" ]; then
+    log "get order: stop"
+    touch APPCTL_CLUSTER_STOP
+    makeNodeList $(sortHostList $(echo ${NODE_LIST[@]}))
   else
+    log "get order: normal"
     makeNodeList $(echo ${NODE_LIST[@]})
   fi
 }
 
 changeMongodbCfg() {
-  echo "here"
+  log "here"
 }
 
 mytest() {
-  if [ ! isClusterInitialized ]; then
+  if ! isClusterInitialized; then
     echo "here"
   else
     echo "there"
