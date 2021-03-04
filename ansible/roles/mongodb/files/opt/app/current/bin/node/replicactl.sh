@@ -397,30 +397,17 @@ check() {
   _check
 }
 
-# revive: actions taken when the node/cluster is NOT health
-revive() {
-  _revive
-}
-
 start() {
   _start
   
   if ! isClusterInitialized; then log "It's a new node, normal start done!"; return; fi
 
-  log "cluster restarted: scale vertical, or upgrade, or normal restart"
+  log "cluster restarted: scale vertical, or upgrade, or normal restart, or change config"
   # do some checks for sure that the cluster is ok
-  log "waiting for replicaSet's status to be ok"
-  retry 1200 3 0 rsIsStatusOK y
-  sleep 5s
-  log "replicaSet's status is ok, stop waiting"
-}
-
-stop() {
-  if isClusterStop; then
-    log "stop cluster: node $MY_SID $MY_IP $MY_PORT"
-    rm -f APPCTL_CLUSTER_STOP
-  fi
-  _stop
+  # log "waiting for replicaSet's status to be ok"
+  # retry 1200 3 0 rsIsStatusOK y
+  # sleep 5s
+  # log "replicaSet's status is ok, stop waiting"
 }
 
 makeNodeList() {
@@ -450,12 +437,9 @@ getActionOrder() {
   fi
 }
 
-changeCfgNormal() {
-  log "cfg normal"
-}
-
-changeCfgNetwork() {
-  log "cfg network"
+restart() {
+  if ! isClusterInitialized; then log "cluster is not initialized, skipping restart"; return; fi
+  _restart
 }
 
 mytest() {

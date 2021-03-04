@@ -130,6 +130,7 @@
                     "key": "rsName",
                     "label": "Replica set name",
                     "description": "Replica set name",
+                    "changeable": false,
                     "type": "string",
                     "default": "foobar",
                     "required": "yes"
