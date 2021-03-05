@@ -269,7 +269,6 @@ EOF
 # $2: value
 modifyOldCfgFile() {
   sed -i "/^$1/c$1=$2" $MONGODB_OLDCONF_FILE
-  log "modify old config file: $1=$2, saved"
 }
 
 getSysUserPasswd() {
@@ -462,10 +461,22 @@ isOplogSizeChanged() {
   test "$MONGODB_OPLOGSIZE" != "$OLD_MONGODB_OPLOGSIZE"
 }
 
+# mongodbChangeOplogSize
+# $1: new oplog size
+mongodbChangeOplogSize() {
+  local jsstr=$(cat <<EOF
+local = db.getSiblingDB("local")
+local.adminCommand({replSetResizeOplog: 1, size: $1})
+EOF
+)
+  runMongoCmd "$jsstr" $MONGODB_USER_SYS $(getSysUserPasswd)
+}
+
 changeMongodbCfg() {
   source $MONGODB_OLDCONF_FILE
   if isOplogSizeChanged; then
     log "Oplog size: $OLD_MONGODB_OPLOGSIZE -> $MONGODB_OPLOGSIZE"
+    mongodbChangeOplogSize $MONGODB_OPLOGSIZE
     modifyOldCfgFile "OLD_MONGODB_OPLOGSIZE" "$MONGODB_OPLOGSIZE"
     log "Change oplog size, done!"
   fi
