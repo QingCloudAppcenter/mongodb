@@ -1,0 +1,16 @@
+net:
+    bindIp: 0.0.0.0
+    port: {{getv "/env/port"}}
+    maxIncomingConnections: {{getv "/env/maxConns"}}
+storage:
+    dbPath: /data/db
+    engine: wiredTiger
+    journal:
+        enabled: true
+systemLog:
+    destination: syslog
+replication:
+    replSetName: {{getv "/env/rsName"}}
+    oplogSizeMB: {{getv "/env/oplogSize"}}
+security:
+    keyFile: /opt/app/current/conf/mongodb/repl.key

@@ -1,9 +1,0 @@
-# zabbix.agent.enabled: {{ getv "/env/zabbix.agent.enabled" }}
-PidFile=/var/run/zabbix/zabbix_agentd.pid
-LogFile=/data/zabbix-agent/logs/zabbix_agentd.log
-LogFileSize=20
-Server={{ getv "/env/zabbix.server.addr" }}
-ListenPort={{ getv "/env/zabbix.agent.port" }}
-Hostname=system.hostname
-Include=/etc/zabbix/zabbix_agentd.d/*.conf
-UnsafeUserParameters=1

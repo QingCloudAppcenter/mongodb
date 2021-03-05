@@ -1,0 +1,71 @@
+{
+   "name":{{cluster.name}},
+   "description":{{cluster.description}},
+   "vxnet":{{cluster.vxnet}},
+   "backup_policy": "device",
+   "incremental_backup_supported": true,
+   "advanced_actions": ["scale_horizontal"],
+   "nodes":[{
+      "role":"replica",
+      "container":{
+         "type":"kvm",
+         "zone":"sh1",
+         "image":"img-i6da178i"
+      },
+      "instance_class":{{cluster.replica.instance_class}},
+      "count":{{cluster.replica.count}},
+      "cpu":{{cluster.replica.cpu}},
+      "memory":{{cluster.replica.memory}},
+      "volume":{
+         "size":{{cluster.replica.volume_size}},
+         "mount_point":"/data",
+         "filesystem":"xfs"
+      },
+      "vertical_scaling_policy": "sequential",
+      "services": {
+         "init": {
+            "post_start_service": true,
+            "cmd": "appctl init"
+         },
+         "start": {
+            "cmd": "appctl start"
+         },
+         "stop": {
+            "cmd": "appctl stop"
+         },
+         "scale_out": {
+            "cmd": "appctl scaleOut"
+         },
+         "scale_in": {
+            "nodes_to_execute_on": 1,
+            "cmd": "appctl scaleIn"
+         },
+         "destroy": {
+            "post_stop_service": true,
+            "cmd": "appctl destroy"
+         },
+         "get_nodes_order": {
+            "event": ["upgrade", "rollback", "scale_vertical"],
+            "cmd": "appctl getActionOrder"
+    }
+		},
+      "health_check": {
+         "enable": true,
+         "interval_sec": 60,
+         "timeout_sec": 30,
+         "action_timeout_sec": 30,
+         "healthy_threshold": 2,
+         "unhealthy_threshold": 2,
+         "check_cmd": "appctl check",
+         "action_cmd": "appctl revive"
+      }
+	}],
+   "env": {
+      "user": {{env.user}},
+      "passwd": {{env.passwd}},
+      "maxConns": {{env.maxConns}},
+      "oplogSize": {{env.oplogSize}},
+      "rsName": {{env.rsName}},
+      "port": {{env.port}}
+   }
+}

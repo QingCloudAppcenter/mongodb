@@ -1,9 +1,0 @@
-[template]
-src = "zabbix_agentd.conf.tmpl"
-dest = "/etc/zabbix/zabbix_agentd.conf"
-mode = "0700"
-keys = [
-    "/",
-]
-
-reload_cmd = "/opt/app/bin/zabbix.sh"
