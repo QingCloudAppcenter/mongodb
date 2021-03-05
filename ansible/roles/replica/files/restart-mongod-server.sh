@@ -7,11 +7,11 @@ if [ -z "$PID" ]; then
 fi
 
 # Stop mongodb server
-/opt/mongodb/bin/stop-mongod-server.sh
+/opt/app/bin/stop-mongod-server.sh
 
 # Start mongodb server
 if [ $? -eq 0 ]; then
-    /opt/mongodb/bin/start-mongod-server.sh
+    /opt/app/bin/start-mongod-server.sh
     if [ $? -eq 0 ]; then
         echo "Restart mongod successful"
         exit 0

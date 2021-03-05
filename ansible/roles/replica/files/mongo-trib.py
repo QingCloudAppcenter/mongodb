@@ -73,8 +73,8 @@ class Mongo(object):
     IGNORE_AGENT_PATH = '/usr/local/etc/ignore_agent'
     RECONFIG_PATH = '/usr/local/etc/reconfig'
 
-    START_CMD = '/opt/mongodb/bin/start-mongod-server.sh'
-    STOP_CMD = '/opt/mongodb/bin/stop-mongod-server.sh'
+    START_CMD = '/opt/app/bin/start-mongod-server.sh'
+    STOP_CMD = '/opt/app/bin/stop-mongod-server.sh'
     HOSTNAME = socket.gethostname()
     # LOGGER_LEVEL = logging.INFO
     LOGGER_LEVEL = logging.DEBUG

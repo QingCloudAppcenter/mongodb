@@ -9,7 +9,7 @@ chown mongodb:mongodb /data/mongodb/
 
 # check conf exists
 if [ ! -f /etc/mongod.conf ]; then
-    /opt/mongodb/bin/mongo-trib.py gen_conf
+    /opt/app/bin/mongo-trib.py gen_conf
 fi
 
-su mongodb -c "/opt/mongodb/bin/mongod --config /etc/mongod.conf" && /opt/mongodb/bin/mongo-trib.py detect_host_changed
+su mongodb -c "/opt/mongodb/bin/mongod --config /etc/mongod.conf" && /opt/app/bin/mongo-trib.py detect_host_changed
