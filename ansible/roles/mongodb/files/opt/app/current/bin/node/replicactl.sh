@@ -255,6 +255,23 @@ createReplKey() {
   echo "$GLOBAL_UUID" | base64 > "$MONGODB_CONF_PATH/repl.key"
 }
 
+saveMongodbOldCfg() {
+  cat > $MONGODB_OLDCONF_FILE <<EOF
+OLD_MY_PORT=$MY_PORT
+OLD_MONGODB_MAXCONNS=$MONGODB_MAXCONNS
+OLD_MONGODB_OPLOGSIZE=$MONGODB_OPLOGSIZE
+EOF
+}
+
+# modifyOldCfgFile
+# change the key-value pair in the Mongodb old config file
+# $1: keyname like OLD_MONGODB_MAXCONNS
+# $2: value
+modifyOldCfgFile() {
+  sed -i "/^$1/c$1=$2" $MONGODB_OLDCONF_FILE
+  log "modify old config file: $1=$2, saved"
+}
+
 getSysUserPasswd() {
   echo "111111" # just for testing
 }
@@ -348,6 +365,10 @@ initNode() {
     chown mongod:svc $MONGODB_CONF_PATH/repl.key
     chmod 400 $MONGODB_CONF_PATH/repl.key
   fi
+  log "create $MONGODB_OLDCONF_FILE"
+  if [ ! -f $MONGODB_OLDCONF_FILE ]; then
+    saveMongodbOldCfg
+  fi
 }
 
 initCluster() {
@@ -437,9 +458,17 @@ getActionOrder() {
   fi
 }
 
-restart() {
-  if ! isClusterInitialized; then log "cluster is not initialized, skipping restart"; return; fi
-  _restart
+isOplogSizeChanged() {
+  test "$MONGODB_OPLOGSIZE" != "$OLD_MONGODB_OPLOGSIZE"
+}
+
+changeMongodbCfg() {
+  source $MONGODB_OLDCONF_FILE
+  if isOplogSizeChanged; then
+    log "Oplog size: $OLD_MONGODB_OPLOGSIZE -> $MONGODB_OPLOGSIZE"
+    modifyOldCfgFile "OLD_MONGODB_OPLOGSIZE" "$MONGODB_OPLOGSIZE"
+    log "Change oplog size, done!"
+  fi
 }
 
 mytest() {

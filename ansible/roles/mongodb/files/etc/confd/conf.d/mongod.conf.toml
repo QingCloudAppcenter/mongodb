@@ -7,4 +7,4 @@ keys = [
   "/env/port",
   "/env/rsName",
 ]
-reload_cmd = "appctl restart"
+reload_cmd = "appctl changeMongodbCfg"
