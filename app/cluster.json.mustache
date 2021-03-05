@@ -6,6 +6,22 @@
    "incremental_backup_supported": true,
    "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
+   "upgrade_policy": [
+      "appv-xhnpehuq"
+   ],
+   "upgrading_policy": "in-place-sequential",
+   "in-place-upgrade-nodes": [{
+     "container":{
+       "snapshot": "ss-epbgrs13",
+       "zone": "pek3"
+     },
+     "copy":[{
+       "mount_role": "replica",
+       "mount_point": "/upgrade",
+       "mount_options": "defaults,noatime",
+       "filesystem": "ext4"
+     }]
+   }],
    "nodes":[
       {
          "role":"replica",
@@ -58,6 +74,10 @@
                "nodes_to_execute_on":1,
                "order":2,
                "cmd":"/opt/app/bin/mongo-trib.py reconfig"
+            },
+            "upgrade":{
+               "cmd": "/upgrade/opt/mongodb/bin/upgrade.sh",
+               "timeout": 10800
             },
             "copy_log": {
                 "type": "custom",
