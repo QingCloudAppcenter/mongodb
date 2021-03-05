@@ -1,0 +1,7 @@
+[template]
+src = "mongod_env.tmpl"
+dest = "/etc/mongod_env"
+keys = [
+    "/",
+]
+reload_cmd = "/opt/app/bin/mongo-trib.py gen_conf && /opt/app/bin/restart-mongod-server.sh"

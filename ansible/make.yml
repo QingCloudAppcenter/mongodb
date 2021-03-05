@@ -1,0 +1,15 @@
+---
+- name: test all roles
+  hosts: all
+  gather_facts: no
+  vars:
+    caddy_version: 1.0.4
+    mongo_dir_34: mongo34
+    mongodb_version_34: mongodb-linux-x86_64-3.4.5
+    mongodb_sha_34: 12e05b48e450eaaea6f567750a666752f85bc468c47a9d2f4d12d9277b674cd7
+    mongo_dir_36: mongo36
+    mongodb_version_36: mongodb-linux-x86_64-3.6.8
+    mongodb_sha_36: b6061204db897087d1d9e30d11fe84280e326323f8984e48c2afcf04711e64f5
+
+  roles:
+    - replica
