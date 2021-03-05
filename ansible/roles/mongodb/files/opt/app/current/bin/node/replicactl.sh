@@ -92,15 +92,15 @@ getCurrentMaster() {
 }
 
 # rsDoInit
-# desc: init a replica set, the node runs this function gets proirity 2, other nodes' proirity is 1
+# desc: init a replica set, other nodes' priority:0,votes:0
 rsDoInit() {
   local memberstr=''
   local curmem=''
   for ((i=0; i<${#NODE_LIST[@]}; i++)); do
     if [ "$(getIp ${NODE_LIST[i]})" = "$MY_IP" ]; then
-      curmem="{_id:$i,host:\"$MY_IP:$MY_PORT\",priority:2}"
+      curmem="{_id:$i,host:\"$MY_IP:$MY_PORT\"}"
     else
-      curmem="{_id:$i,host:\"$(getIp ${NODE_LIST[i]}):$MY_PORT\"}"
+      curmem="{_id:$i,host:\"$(getIp ${NODE_LIST[i]}):$MY_PORT\",priority:0,votes:0}"
     fi
 
     if [ "$i" -eq 0 ]; then
@@ -339,11 +339,11 @@ rsResetPriority() {
 cfg = rs.conf()
 me = rs.isMaster().me
 for (i=0; i<cfg.members.length; i++) {
-  if (cfg.members[i].host == me) {
-    break
+  if (cfg.members[i].host != me) {
+    cfg.members[i].priority = 1
+    cfg.members[i].votes = 1
   }
 }
-cfg.members[i].priority = 1
 rs.reconfig(cfg)
 EOF
 )
@@ -391,7 +391,7 @@ initCluster() {
   log "replica set init: Add Custom User, $MY_SID $MY_IP"
   mongodbAddCustomUser
 
-  log "replica set init: Reset Primary Node's priority, $MY_SID $MY_IP"
+  log "replica set init: Reset Secondary Node's priority, $MY_SID $MY_IP"
   rsResetPriority
 
   log "replica set init: All done!"
@@ -461,6 +461,24 @@ isOplogSizeChanged() {
   test "$MONGODB_OPLOGSIZE" != "$OLD_MONGODB_OPLOGSIZE"
 }
 
+isMaxConnsChanged() {
+  test "$MONGODB_MAXCONNS" != "$OLD_MONGODB_MAXCONNS"
+}
+
+setFlagCfgChgRestart() {
+  if [ -f $MONGODB_FLAG_CFGCHG_RESTART ]; then return; fi
+
+  touch $MONGODB_FLAG_CFGCHG_RESTART
+}
+
+resetFlagCfgChgRestart() {
+  rm -f $MONGODB_FLAG_CFGCHG_RESTART
+}
+
+isCfgChgNeedRestart() {
+  test -f $MONGODB_FLAG_CFGCHG_RESTART
+}
+
 # mongodbChangeOplogSize
 # $1: new oplog size
 mongodbChangeOplogSize() {
@@ -479,6 +497,19 @@ changeMongodbCfg() {
     mongodbChangeOplogSize $MONGODB_OPLOGSIZE
     modifyOldCfgFile "OLD_MONGODB_OPLOGSIZE" "$MONGODB_OPLOGSIZE"
     log "Change oplog size, done!"
+  fi
+
+  if isMaxConnsChanged; then
+    log "Max conns: $OLD_MONGODB_MAXCONNS -> $MONGODB_MAXCONNS"
+    modifyOldCfgFile "OLD_MONGODB_MAXCONNS" "$MONGODB_MAXCONNS"
+    setFlagCfgChgRestart
+    log "Must restart to take effect, Set the restart flag"
+  fi
+
+  if isCfgChgNeedRestart; then
+    resetFlagCfgChgRestart
+    log "Doing restart to take effect"
+    _restart
   fi
 }
 
