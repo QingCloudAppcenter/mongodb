@@ -37,13 +37,13 @@
 - name: put bashrc
   copy: src=bashrc.sh dest=/root/.bashrc
 
-- get_url:
-    url: https://fastdl.mongodb.org/linux/{{item.mongodb_version}}.tgz
-    dest: /tmp/{{item.mongodb_version}}.tgz
-    checksum: sha256:{{item.mongodb_sha}}
-  with_items:
-    - {mongodb_version: "{{mongodb_version_34}}",mongodb_sha: "{{mongodb_sha_34}}"}
-    - {mongodb_version: "{{mongodb_version_36}}",mongodb_sha: "{{mongodb_sha_36}}"}
+# - get_url:
+#     url: http://downloads.mongodb.org/linux/{{item.mongodb_version}}.tgz
+#     dest: /tmp/{{item.mongodb_version}}.tgz
+#     checksum: sha256:{{item.mongodb_sha}}
+#   with_items:
+#     - {mongodb_version: "{{mongodb_version_34}}",mongodb_sha: "{{mongodb_sha_34}}"}
+#     - {mongodb_version: "{{mongodb_version_36}}",mongodb_sha: "{{mongodb_sha_36}}"}
 
 - get_url:
     url: http://appcenter-docs.qingcloud.com/developer-guide/scripts/app-agent-linux-amd64.tar.gz
