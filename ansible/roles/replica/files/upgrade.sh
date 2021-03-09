@@ -95,20 +95,85 @@ rollback() {
   ln -snf $oldMongoVersion/bin /opt/mongodb/bin
 }
 
+# runMongoCmdEx
+# desc run mongo shell
+# $1: script string
+# $2/$3: username/passwd (option)
+# $4: ip (option)
+runMongoCmdEx() {
+  if [ $# -ne 1 ] && [ $# -ne 3 ] && [ $# -ne 4 ]; then return 1; fi
+
+  local cmd="/opt/mongodb/bin/mongo --quiet --port $(getMongoPort)"
+  local jsstr="$1"
+
+  shift
+  if [ $# -gt 0 ]; then
+    cmd="$cmd --authenticationDatabase admin --username $1 --password $2"
+    shift 2
+    if [ $# -ne 0 ]; then
+      cmd="$cmd --host $1"
+    fi
+  fi
+
+  timeout --preserve-status 5 echo "$jsstr" | $cmd
+}
+
+getIp() {
+  echo $(echo $1 | cut -d'|' -f2)
+}
+
+getNodeId() {
+  echo $(echo $1 | cut -d'|' -f1)
+}
+
+isMasterEx() {
+  runMongoCmdEx "db.isMaster().ismaster == true || quit(1)" "qc_master" "$(cat /data/pitrix.pwd)" "$1"
+}
+
+# getorder
+# desc: get upgrade order
+# intput: none
+# output: like cli-xxx,cli-yyy,cli-zzz
+# test cmd: upgrade getorder
+getorder() {
+  local meta=$(curl http://metadata/self/hosts)
+  local nodes=$(echo "$meta" | grep -o '^/replica/[[:alnum:]-]\+' | uniq | cut -d'/' -f3)
+  local tmpstr=''
+  nodes=($(echo $nodes))
+  for((i=0;i<${#nodes[@]};i++)); do
+    tmpstr="$tmpstr $(echo "$meta" | grep "${nodes[i]}/node_id" | cut -f2)"
+    tmpstr="$tmpstr|$(echo "$meta" | grep "${nodes[i]}/ip" | cut -f2) "
+  done
+  tmpstr=($(echo $tmpstr))
+  local res=''
+  local mas=''
+  for((i=0;i<${#tmpstr[@]};i++)); do
+    if isMasterEx $(getIp ${tmpstr[i]}); then
+      mas=$(getNodeId ${tmpstr[i]})
+    else
+      res="$res$(getNodeId ${tmpstr[i]}),"
+    fi
+  done
+  res="$res$mas"
+  echo "$res"
+}
+
 main() {
+  if [ "getorder" = "$1" ]; then log "get upgrade order"; getorder; return; fi
+
   toggleHealthCheck false
 
+  log "stopping old service"
+  /opt/mongodb/bin/stop-mongod-server.sh
+
+  log "replace new app files"
   ${@:-proceed}
 
-  if isMaster; then
-    log "leaving primary node as is old version, please manually restart it later."
-  else
-    log "restarting mongodb ..."
-    /opt/mongodb/bin/restart-mongod-server.sh
+  log "starting mongodb ..."
+  /opt/mongodb/bin/start-mongod-server.sh
 
-    log "waiting mongodb to be ready ..."
-    retry 1200 3 0 checkFullyStarted
-  fi
+  log "waiting mongodb to be ready ..."
+  retry 1200 3 0 checkFullyStarted
 
   toggleHealthCheck true
 }
