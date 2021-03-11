@@ -6,7 +6,7 @@ readonly appctlLogDir=/data/appctl/logs
 readonly appctlLogFile=$appctlLogDir/appctl.log
 
 initNode() {
-  mkdir -p $appctlLogDir
+  if [ ! -d $appctlLogDir ]; then mkdir -p $appctlLogDir; fi
 }
 
 log() {
@@ -74,7 +74,7 @@ isMaster() {
 }
 
 readonly oldMongoVersion=3.4.5
-readonly newMongoVersion=3.4.17
+readonly newMongoVersion=3.6.8
 
 proceed() {
   initNode
@@ -85,9 +85,9 @@ proceed() {
     mv /opt/$oldMongoVersion /opt/mongodb/
   fi
   log "copying new files ..."
-  rsync -aAX /upgrade/opt/mongodb/ /opt/mongodb/
+  rsync -aAX /upgrade/opt/ /opt/
   log "upgrading to $newMongoVersion ..."
-  ln -snf $newMongoVersion/bin /opt/mongodb/bin
+  ln -snf /opt/mongodb/$newMongoVersion/bin /opt/mongodb/bin
 }
 
 rollback() {
@@ -130,12 +130,12 @@ isMasterEx() {
   runMongoCmdEx "db.isMaster().ismaster == true || quit(1)" "qc_master" "$(cat /data/pitrix.pwd)" "$1"
 }
 
-# getorder
+# getOrder
 # desc: get upgrade order
 # intput: none
 # output: like cli-xxx,cli-yyy,cli-zzz
 # test cmd: upgrade getorder
-getorder() {
+getOrder() {
   local meta=$(curl http://metadata/self/hosts)
   local nodes=$(echo "$meta" | grep -o '^/replica/[[:alnum:]-]\+' | uniq | cut -d'/' -f3)
   local tmpstr=''
@@ -158,8 +158,62 @@ getorder() {
   echo "$res"
 }
 
+# isDbVersionOk
+# desc: judge if the db version is ok
+# input: $1 desire version number, etc 3.6(not 3.6.8)
+isDbVersionOk() {
+  local jsstr=$(cat <<EOF
+ver=db.version()
+if (ver.indexOf("$1") !=0 ) { quit(1) }
+EOF
+)
+  runMongoCmdEx "$jsstr" "qc_master" "$(cat /data/pitrix.pwd)"
+}
+
+# isFCVOk
+# desc: judge if the feature compability version is ok
+# input: $1 desire version number, etc 3.6(not 3.6.8)
+isFCVOk() {
+  local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
+  local res=$(runMongoCmdEx "$jsstr" "qc_master" "$(cat /data/pitrix.pwd)")
+  res=$(echo "$res" | sed -n '/version/p' | grep -o '[[:digit:].]\+')
+  test "$1" = "$res"
+}
+
+isReplicasSetStatusOk() {
+  local meta=$(curl http://metadata/self/hosts)
+  local nodecnt=$(echo "$meta" | grep -o '^/replica/[[:alnum:]-]\+' | uniq | wc -l)
+  local jsstr=$(cat <<EOF
+members=rs.status().members
+if (members.filter(m => /(1|2)/.test(m.state)).length != $nodecnt) {
+  quit(1)
+} else if (members.filter(m => /(1)/.test(m.state)).length != 1) {
+  quit(1)
+}
+EOF
+)
+
+  runMongoCmdEx "$jsstr" "qc_master" "$(cat /data/pitrix.pwd)"
+}
+
+readonly ERROR_UPGRADE_BADVERSION=33
+readonly ERROR_UPGRADE_BADFCV=34
+readonly ERROR_UPGRADE_BADRSSTATUS=35
+precheck() {
+  if ! isDbVersionOk "3.4"; then log "precheck: db version 3.4, error!"; return $ERROR_UPGRADE_BADVERSION; fi
+  if ! isFCVOk "3.4"; then log "precheck: FCV 3.4, error!"; return $ERROR_UPGRADE_BADFCV; fi
+  if ! isReplicasSetStatusOk; then log "precheck: replia set status, error!"; return $ERROR_UPGRADE_BADRSSTATUS; fi
+}
+
 main() {
-  if [ "getorder" = "$1" ]; then log "get upgrade order"; getorder; return; fi
+  initNode
+  if [ "precheck" = "$1" ]; then
+    log "doing precheck ..."
+    if ! precheck; then log "precheck error! stop upgrade!"; return 1; fi
+    log "precheck done!"
+  fi
+
+  if [ "getOrder" = "$1" ]; then getOrder; return; fi
 
   toggleHealthCheck false
 
@@ -167,10 +221,10 @@ main() {
   /opt/mongodb/bin/stop-mongod-server.sh
 
   log "replace new app files"
-  ${@:-proceed}
+  proceed
 
   log "starting mongodb ..."
-  /opt/mongodb/bin/start-mongod-server.sh
+  /opt/app/bin/start-mongod-server.sh
 
   log "waiting mongodb to be ready ..."
   retry 1200 3 0 checkFullyStarted
