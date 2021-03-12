@@ -136,7 +136,7 @@ isMasterEx() {
 # output: like cli-xxx,cli-yyy,cli-zzz
 # test cmd: upgrade getorder
 getOrder() {
-  local meta=$(curl http://metadata/self/hosts)
+  local meta=$(curl -s http://metadata/self/hosts)
   local nodes=$(echo "$meta" | grep -o '^/replica/[[:alnum:]-]\+' | uniq | cut -d'/' -f3)
   local tmpstr=''
   nodes=($(echo $nodes))
@@ -176,12 +176,12 @@ EOF
 isFCVOk() {
   local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
   local res=$(runMongoCmdEx "$jsstr" "qc_master" "$(cat /data/pitrix.pwd)")
-  res=$(echo "$res" | sed -n '/version/p' | grep -o '[[:digit:].]\+')
+  res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
   test "$1" = "$res"
 }
 
 isReplicasSetStatusOk() {
-  local meta=$(curl http://metadata/self/hosts)
+  local meta=$(curl -s http://metadata/self/hosts)
   local nodecnt=$(echo "$meta" | grep -o '^/replica/[[:alnum:]-]\+' | uniq | wc -l)
   local jsstr=$(cat <<EOF
 members=rs.status().members
@@ -207,13 +207,12 @@ precheck() {
 
 main() {
   initNode
-  if [ "precheck" = "$1" ]; then
-    log "doing precheck ..."
-    if ! precheck; then log "precheck error! stop upgrade!"; return 1; fi
-    log "precheck done!"
-  fi
 
   if [ "getOrder" = "$1" ]; then getOrder; return; fi
+
+  log "doing precheck ..."
+  if ! precheck; then log "precheck error! stop upgrade!"; return 1; fi
+  log "precheck done!"
 
   toggleHealthCheck false
 
