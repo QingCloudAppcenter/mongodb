@@ -127,7 +127,7 @@ getNodeId() {
 }
 
 isMasterEx() {
-  runMongoCmdEx "db.isMaster().ismaster == true || quit(1)" "qc_master" "$(cat /data/pitrix.pwd)" "$1"
+  runMongoCmdEx "db.isMaster().ismaster == true || quit(1)" "qc_master" "$(cat /data/pitrix.pwd)" "$1" > /dev/null
 }
 
 # getOrder
