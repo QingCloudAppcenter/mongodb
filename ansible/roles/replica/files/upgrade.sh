@@ -209,7 +209,14 @@ precheck() {
 # desc: primary node does step down first
 # input: $1-seconds during which the node can't be primary again
 doStepDown() {
-  runMongoCmdEx "rs.stepDown($1)" "qc_master" "$(cat /data/pitrix.pwd)"
+  if runMongoCmdEx "rs.stepDown($1)" "qc_master" "$(cat /data/pitrix.pwd)"; then
+    # need check error status
+    log "need check error status"
+    :
+  else
+    # it's ok to proceed
+    :
+  fi
 }
 
 # isNewPrimaryOk
