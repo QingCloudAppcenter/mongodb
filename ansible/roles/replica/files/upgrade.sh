@@ -205,6 +205,22 @@ precheck() {
   if ! isReplicasSetStatusOk; then log "precheck: replia set status, error!"; return $ERROR_UPGRADE_BADRSSTATUS; fi
 }
 
+# doStepDown
+# desc: primary node does step down first
+# input: $1-seconds during which the node can't be primary again
+doStepDown() {
+  runMongoCmdEx "rs.stepDown($1)" "qc_master" "$(cat /data/pitrix.pwd)"
+}
+
+# isNewPrimaryOk
+# desc: judge if new primary is elected
+isNewPrimaryOk() {
+  local res=$(runMongoCmdEx "rs.isMaster()" "qc_master" "$(cat /data/pitrix.pwd)")
+  local primary=$(echo "$res" | sed -n '/"primary"/p' | grep -o '[[:digit:]][[:digit:].:]\+')
+  local me=$(echo "$res" | sed -n '/"me"/p' | grep -o '[[:digit:]][[:digit:].:]\+')
+  test "$primary" != "$me"
+}
+
 main() {
   initNode
 
@@ -216,6 +232,15 @@ main() {
 
   toggleHealthCheck false
 
+  if isMaster; then
+    log "primary node steps down"
+    doStepDown 180
+    sleep 5s
+    log "waiting for a new primary elected"
+    retry 1200 3 0 isNewPrimaryOk
+    log "new primary is ok"
+  fi
+
   log "stopping old service"
   /opt/mongodb/bin/stop-mongod-server.sh
 
@@ -224,6 +249,7 @@ main() {
 
   log "starting mongodb ..."
   /opt/app/bin/start-mongod-server.sh
+  sleep 5s
 
   log "waiting mongodb to be ready ..."
   retry 1200 3 0 checkFullyStarted
