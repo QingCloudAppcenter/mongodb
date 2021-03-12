@@ -160,7 +160,7 @@ getOrder() {
 
 # isDbVersionOk
 # desc: judge if the db version is ok
-# input: $1 desire version number, etc 3.6(not 3.6.8)
+# input: $1 desire version number, etc 3.6 or 3.6.8
 isDbVersionOk() {
   local jsstr=$(cat <<EOF
 ver=db.version()
@@ -212,7 +212,7 @@ doStepDown() {
   if runMongoCmdEx "rs.stepDown($1)" "qc_master" "$(cat /data/pitrix.pwd)"; then
     # need check error status
     log "need check error status"
-    :
+    retrun 1
   else
     # it's ok to proceed
     :
@@ -228,16 +228,57 @@ isNewPrimaryOk() {
   test "$primary" != "$me"
 }
 
+# doRollback
+# desc: rollback when upgrade failed
+doRollback() {
+  log "downgrade begin ..."
+  local pid=$(pidof mongod)
+  if [ -n "$pid" ]; then
+    if isDbVersionOk "3.4.5"; then log "already running the old version mongod, skipping"; return; fi
+
+    if isMaster; then
+      log "primary node steps down"
+      doStepDown 180
+      sleep 5s
+      log "waiting for a new primary elected"
+      retry 1200 3 0 isNewPrimaryOk
+      log "new primary is ok"
+    fi
+
+    log "stop higher version mongod"
+    /opt/app/bin/stop-mongod-server.sh
+  fi
+
+  toggleHealthCheck false
+
+  log "correct the symlink to old folder:/opt/mongodb/$oldMongoVersion/bin"
+  ln -snf /opt/mongodb/$oldMongoVersion/bin /opt/mongodb/bin
+  
+  log "start the old version mongod"
+  /opt/mongodb/bin/start-mongod-server.sh
+  sleep 5s
+
+  log "waiting for mongodb to be ready ..."
+  retry 1200 3 0 checkFullyStarted
+
+  toggleHealthCheck true
+  log "current node's downgrade: done!"
+}
+
 main() {
   initNode
 
   if [ "getOrder" = "$1" ]; then getOrder; return; fi
+
+  if [ "doRollback" = "$1" ]; then doRollback; return; fi
 
   log "doing precheck ..."
   if ! precheck; then log "precheck error! stop upgrade!"; return 1; fi
   log "precheck done!"
 
   toggleHealthCheck false
+  
+  log "upgrading current node ..."
 
   if isMaster; then
     log "primary node steps down"
@@ -258,10 +299,11 @@ main() {
   /opt/app/bin/start-mongod-server.sh
   sleep 5s
 
-  log "waiting mongodb to be ready ..."
+  log "waiting for mongodb to be ready ..."
   retry 1200 3 0 checkFullyStarted
 
   toggleHealthCheck true
+  log "current node's upgrade: done!"
 }
 
 main $@

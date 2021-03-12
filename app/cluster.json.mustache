@@ -7,12 +7,12 @@
    "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "upgrade_policy": [
-      "appv-xhnpehuq"
+      "appv-omli6gvn"
    ],
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-epbgrs13",
+       "snapshot": "ss-bzxxr07w",
        "zone": "pek3"
      },
      "copy":[{
@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-i2o7whhf"
+            "image":"img-p07mmowd"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -76,7 +76,7 @@
                "cmd":"/opt/app/bin/mongo-trib.py reconfig"
             },
             "upgrade":{
-               "cmd": "/upgrade/opt/mongodb/bin/upgrade.sh",
+               "cmd": "/upgrade/upgrade.sh",
                "timeout": 10800
             },
             "copy_log": {
@@ -91,6 +91,13 @@
                 "type": "custom",
                 "cmd": "/opt/app/bin/mongo-trib.py clean_log",
                 "timeout": 1800
+            },
+            "get_nodes_order": {
+               "event": ["upgrade"],
+               "cmd": "/upgrade/upgrade.sh getOrder"
+            },
+            "rollback": {
+                "cmd": "/upgrade/upgrade.sh doRollback"
             }
          }
       }
@@ -104,7 +111,7 @@
    },
    "advanced_services": {
       "update_nodes_names": {
-         "cmd": "/opt/app/bin/mongo-trib.py get_nodes_names",
+         "cmd": "/opt/mongodb/bin/mongo-trib.py get_nodes_names",
          "timeout": 10
       }
    },
