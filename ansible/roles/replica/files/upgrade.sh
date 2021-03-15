@@ -265,12 +265,50 @@ doRollback() {
   log "current node's downgrade: done!"
 }
 
+# showFCV
+# desc: display feature compatibility version according
+showFCV() {
+  local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
+  local res=$(runMongoCmdEx "$jsstr" "qc_master" "$(cat /data/pitrix.pwd)")
+  res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
+  local tmpstr=$(cat <<EOF
+{
+  "labels": ["Feature compatibility version"],
+  "data": [
+    ["$res"]
+  ]
+}
+EOF
+)
+  echo "$tmpstr"
+}
+
+# changeFCV
+# desc: change feature compatibility version to $1
+changeFCV() {
+  if ! isMaster; then return; fi
+
+  local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
+  local res=$(runMongoCmdEx "$jsstr" "qc_master" "$(cat /data/pitrix.pwd)")
+  res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
+  if [ "$res" = "$1" ]; then return; fi
+
+  if ! isReplicasSetStatusOk; then return; fi
+
+  jsstr="db.adminCommand({setFeatureCompatibilityVersion:\"$1\"})"
+  runMongoCmdEx "$jsstr" "qc_master" "$(cat /data/pitrix.pwd)"
+}
+
 main() {
   initNode
 
   if [ "getOrder" = "$1" ]; then getOrder; return; fi
 
   if [ "doRollback" = "$1" ]; then doRollback; return; fi
+
+  if [ "showFCV" = "$1" ]; then showFCV; return; fi
+
+  if [ "changeFCV" = "$1" ]; then changeFCV "$2"; return; fi
 
   log "doing precheck ..."
   if ! precheck; then log "precheck error! stop upgrade!"; return 1; fi

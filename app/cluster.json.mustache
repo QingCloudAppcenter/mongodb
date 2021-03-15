@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-p07mmowd"
+            "image":"img-ikd3r1l7"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -98,6 +98,10 @@
             },
             "rollback": {
                 "cmd": "/upgrade/upgrade.sh doRollback"
+            },
+            "changeFCV": {
+               "type": "custom",
+               "cmd": "/opt/app/bin/upgrade.sh changeFCV 3.6"
             }
          }
       }
@@ -224,5 +228,11 @@
       "alarm":[
          "connections"
       ]
+   },
+   "display_tabs": {
+      "FCV": {
+         "cmd": "/opt/app/bin/upgrade.sh showFCV",
+         "description": "display the current feature compatibility version"
+      }
    }
 }
