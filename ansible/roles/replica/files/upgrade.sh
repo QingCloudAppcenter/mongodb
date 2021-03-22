@@ -59,7 +59,7 @@ checkFullyStarted() {
   runMongoCmd "rs.status().members.filter(m => m.name == '$myIp:$port' && /(PRIMARY|SECONDARY)/.test(m.stateStr)).length == 1 || quit($EC_NOT_READY)"
 }
 
-readonly oldMongoVersion=3.4.5
+oldMongoVersion=''
 readonly newMongoVersion=3.6.8
 
 proceed() {
@@ -141,6 +141,12 @@ getOrder() {
   done
   res="$res$mas"
   echo "$res"
+}
+
+# getDbVersion
+# desc: get current mongod version
+getDbVersion() {
+  runMongoCmd "db.version()"
 }
 
 # isDbVersionOk
@@ -325,5 +331,11 @@ main() {
   toggleHealthCheck true
   log "current node's upgrade: done!"
 }
+
+readonly VERSIONFILE="/data/versionfile"
+if [ ! -f $VERSIONFILE ]; then
+  getDbVersion > $VERSIONFILE
+fi
+oldMongoVersion=$(cat $VERSIONFILE)
 
 main $@
