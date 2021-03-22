@@ -155,10 +155,10 @@ EOF
   runMongoCmd "$jsstr"
 }
 
-# isFCVOk
+# isFcvOk
 # desc: judge if the feature compability version is ok
 # input: $1 desire version number, etc 3.6(not 3.6.8)
-isFCVOk() {
+isFcvOk() {
   local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
   local res=$(runMongoCmd "$jsstr")
   res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
@@ -184,9 +184,9 @@ EOF
 readonly ERROR_UPGRADE_BADVERSION=33
 readonly ERROR_UPGRADE_BADFCV=34
 readonly ERROR_UPGRADE_BADRSSTATUS=35
-precheck() {
+preCheck() {
   if ! isDbVersionOk "3.4"; then log "precheck: db version 3.4, error!"; return $ERROR_UPGRADE_BADVERSION; fi
-  if ! isFCVOk "3.4"; then log "precheck: FCV 3.4, error!"; return $ERROR_UPGRADE_BADFCV; fi
+  if ! isFcvOk "3.4"; then log "precheck: FCV 3.4, error!"; return $ERROR_UPGRADE_BADFCV; fi
   if ! isReplicasSetStatusOk; then log "precheck: replia set status, error!"; return $ERROR_UPGRADE_BADRSSTATUS; fi
 }
 
@@ -224,7 +224,7 @@ doRollback() {
     if isMaster; then
       log "primary node steps down"
       doStepDown 180
-      sleep 5s
+      
       log "waiting for a new primary elected"
       retry 1200 3 0 isNewPrimaryOk
       log "new primary is ok"
@@ -241,7 +241,6 @@ doRollback() {
   
   log "start the old version mongod"
   /opt/mongodb/bin/start-mongod-server.sh
-  sleep 5s
 
   log "waiting for mongodb to be ready ..."
   retry 1200 3 0 checkFullyStarted
@@ -296,7 +295,7 @@ main() {
   if [ "changeFCV" = "$1" ]; then changeFCV "$2"; return; fi
 
   log "doing precheck ..."
-  if ! precheck; then log "precheck error! stop upgrade!"; return 1; fi
+  if ! preCheck; then log "precheck error! stop upgrade!"; return 1; fi
   log "precheck done!"
 
   toggleHealthCheck false
@@ -306,7 +305,6 @@ main() {
   if isMaster; then
     log "primary node steps down"
     doStepDown 180
-    sleep 5s
     log "waiting for a new primary elected"
     retry 1200 3 0 isNewPrimaryOk
     log "new primary is ok"
@@ -320,7 +318,6 @@ main() {
 
   log "starting mongodb ..."
   /opt/app/bin/start-mongod-server.sh
-  sleep 5s
 
   log "waiting for mongodb to be ready ..."
   retry 1200 3 0 checkFullyStarted
