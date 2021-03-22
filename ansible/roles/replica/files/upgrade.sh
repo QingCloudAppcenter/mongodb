@@ -72,7 +72,7 @@ proceed() {
   fi
   log "copying new files ..."
   rsync -aAX /upgrade/opt/ /opt/
-  log "upgrading to $newMongoVersion ..."
+  log "creating symlink to $newMongoVersion ..."
   ln -snf /opt/mongodb/$newMongoVersion/bin /opt/mongodb/bin
 }
 

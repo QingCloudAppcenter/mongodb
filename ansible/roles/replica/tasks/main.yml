@@ -66,7 +66,6 @@
     group: root
     state: directory
   with_items:
-    - "{{mongo_dir_34}}"
     - "{{mongo_dir_36}}"
 
 - unarchive:
@@ -76,7 +75,6 @@
     creates: "/opt/mongodb/{{item.mongodb_dir}}/bin"
     extra_opts: [ '--strip-components=1' ]
   with_items:
-  - {mongodb_version: "{{mongodb_version_34}}",mongodb_dir: "{{mongo_dir_34}}"}
   - {mongodb_version: "{{mongodb_version_36}}",mongodb_dir: "{{mongo_dir_36}}"}
 
 - name: create symlink to current mongodb version
