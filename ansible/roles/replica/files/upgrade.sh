@@ -170,9 +170,9 @@ isReplicasSetStatusOk() {
   local nodecnt=$(echo "$meta" | grep -o '^/replica/[[:alnum:]-]\+' | uniq | wc -l)
   local jsstr=$(cat <<EOF
 members=rs.status().members
-if (members.filter(m => /(1|2)/.test(m.state)).length != $nodecnt) {
+if (members.filter(m => /(PRIMARY|SECONDARY)/.test(m.stateStr)).length != $nodecnt) {
   quit(1)
-} else if (members.filter(m => /(1)/.test(m.state)).length != 1) {
+} else if (members.filter(m => /(PRIMARY)/.test(m.stateStr)).length != 1) {
   quit(1)
 }
 EOF
@@ -249,9 +249,9 @@ doRollback() {
   log "current node's downgrade: done!"
 }
 
-# showFCV
+# showFcv
 # desc: display feature compatibility version on web console
-showFCV() {
+showFcv() {
   local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
   local res=$(runMongoCmd "$jsstr")
   res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
@@ -267,9 +267,9 @@ EOF
   echo "$tmpstr"
 }
 
-# changeFCV
+# changeFcv
 # desc: change feature compatibility version to $1
-changeFCV() {
+changeFcv() {
   if ! isMaster; then return; fi
 
   local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
@@ -290,9 +290,9 @@ main() {
 
   if [ "doRollback" = "$1" ]; then doRollback; return; fi
 
-  if [ "showFCV" = "$1" ]; then showFCV; return; fi
+  if [ "showFcv" = "$1" ]; then showFcv; return; fi
 
-  if [ "changeFCV" = "$1" ]; then changeFCV "$2"; return; fi
+  if [ "changeFcv" = "$1" ]; then changeFcv "$2"; return; fi
 
   log "doing precheck ..."
   if ! preCheck; then log "precheck error! stop upgrade!"; return 1; fi
