@@ -110,6 +110,7 @@
     - start-mongod-server.sh
     - stop-mongod-server.sh
     - upgrade.sh
+    - helper.sh
 
 - copy: src={{ item }} dest=/etc/confd/{{ item }}
   with_items:

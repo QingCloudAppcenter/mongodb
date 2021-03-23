@@ -12,7 +12,7 @@
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-fvqmh7tn",
+       "snapshot": "ss-kx2jhhm8",
        "zone": "pek3"
      },
      "copy":[{
@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-nwqmtpul"
+            "image":"img-q773g8df"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -101,7 +101,7 @@
             },
             "changeFcv": {
                "type": "custom",
-               "cmd": "/opt/app/bin/upgrade.sh changeFcv 3.6"
+               "cmd": "/opt/app/bin/helper.sh changeFcv 3.6"
             }
          }
       }
@@ -231,7 +231,7 @@
    },
    "display_tabs": {
       "FCV": {
-         "cmd": "/opt/app/bin/upgrade.sh showFcv",
+         "cmd": "/opt/app/bin/helper.sh showFcv",
          "description": "Current Feature Compatibility Version"
       }
    }

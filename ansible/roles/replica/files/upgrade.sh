@@ -49,16 +49,6 @@ getMongoPort() {
   awk '$1=="port:" {print $2}' /etc/mongod.conf
 }
 
-readonly EC_NOT_READY=128
-
-# checkFullyStarted
-# desc: check if this node's stateStr is primary or secondary
-checkFullyStarted() {
-  local myIp=$(hostname -I | cut -d' ' -f1)
-  local port=$(getMongoPort)
-  runMongoCmd "rs.status().members.filter(m => m.name == '$myIp:$port' && /(PRIMARY|SECONDARY)/.test(m.stateStr)).length == 1 || quit($EC_NOT_READY)"
-}
-
 oldMongoVersion=''
 readonly newMongoVersion=3.6.8
 
@@ -171,15 +161,16 @@ isFcvOk() {
   test "$1" = "$res"
 }
 
+readonly EC_NOT_READY=128
 isReplicasSetStatusOk() {
   local meta=$(curl -s http://metadata/self/hosts)
   local nodecnt=$(echo "$meta" | grep -o '^/replica/[[:alnum:]-]\+' | uniq | wc -l)
   local jsstr=$(cat <<EOF
 members=rs.status().members
 if (members.filter(m => /(PRIMARY|SECONDARY)/.test(m.stateStr)).length != $nodecnt) {
-  quit(1)
+  quit($EC_NOT_READY)
 } else if (members.filter(m => /(PRIMARY)/.test(m.stateStr)).length != 1) {
-  quit(1)
+  quit($EC_NOT_READY)
 }
 EOF
 )
@@ -249,44 +240,10 @@ doRollback() {
   /opt/mongodb/bin/start-mongod-server.sh
 
   log "waiting for mongodb to be ready ..."
-  retry 1200 3 0 checkFullyStarted
+  retry 1200 3 0 isReplicasSetStatusOk
 
   toggleHealthCheck true
   log "current node's downgrade: done!"
-}
-
-# showFcv
-# desc: display feature compatibility version on web console
-showFcv() {
-  local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
-  local res=$(runMongoCmd "$jsstr")
-  res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
-  local tmpstr=$(cat <<EOF
-{
-  "labels": ["Feature compatibility version"],
-  "data": [
-    ["$res"]
-  ]
-}
-EOF
-)
-  echo "$tmpstr"
-}
-
-# changeFcv
-# desc: change feature compatibility version to $1
-changeFcv() {
-  if ! isMaster; then return; fi
-
-  local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
-  local res=$(runMongoCmd "$jsstr")
-  res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
-  if [ "$res" = "$1" ]; then return; fi
-
-  if ! isReplicasSetStatusOk; then return; fi
-
-  jsstr="db.adminCommand({setFeatureCompatibilityVersion:\"$1\"})"
-  runMongoCmd "$jsstr"
 }
 
 main() {
@@ -295,10 +252,6 @@ main() {
   if [ "getOrder" = "$1" ]; then getOrder; return; fi
 
   if [ "doRollback" = "$1" ]; then doRollback; return; fi
-
-  if [ "showFcv" = "$1" ]; then showFcv; return; fi
-
-  if [ "changeFcv" = "$1" ]; then changeFcv "$2"; return; fi
 
   log "doing precheck ..."
   if ! preCheck; then log "precheck error! stop upgrade!"; return 1; fi
@@ -326,7 +279,7 @@ main() {
   /opt/app/bin/start-mongod-server.sh
 
   log "waiting for mongodb to be ready ..."
-  retry 1200 3 0 checkFullyStarted
+  retry 1200 3 0 isReplicasSetStatusOk
 
   toggleHealthCheck true
   log "current node's upgrade: done!"
