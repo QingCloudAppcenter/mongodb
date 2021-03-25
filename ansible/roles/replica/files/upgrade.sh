@@ -54,12 +54,14 @@ readonly newMongoVersion=3.6.8
 
 proceed() {
   initNode
-  if [ ! -d /opt/mongodb/$oldMongoVersion ]; then
-    log "backup old files ..."
+
+  if [ "$oldMongoVersion" = "3.4.5" ]; then
+    log "change dir structure when mongodb version is 3.4.5"
     mv /opt/mongodb /opt/$oldMongoVersion
     mkdir /opt/mongodb
     mv /opt/$oldMongoVersion /opt/mongodb/
   fi
+
   log "copying new files ..."
   rsync -aAX /upgrade/opt/ /opt/
   log "creating symlink to $newMongoVersion ..."
@@ -178,6 +180,7 @@ EOF
   runMongoCmd "$jsstr"
 }
 
+readonly VERSIONFILE="/data/versionfile"
 readonly ERROR_UPGRADE_BADVERSION=33
 readonly ERROR_UPGRADE_BADFCV=34
 readonly ERROR_UPGRADE_BADRSSTATUS=35
@@ -213,10 +216,11 @@ isNewPrimaryOk() {
 # doRollback
 # desc: rollback when upgrade failed
 doRollback() {
+  oldMongoVersion=$(cat $VERSIONFILE)
   log "downgrade begin ..."
   local pid=$(pidof mongod)
   if [ -n "$pid" ]; then
-    if isDbVersionOk "3.4.5"; then log "already running the old version mongod, skipping"; return; fi
+    if isDbVersionOk "$oldMongoVersion"; then log "already running the old version mongod, skipping"; return; fi
 
     if isMaster; then
       log "primary node steps down"
@@ -237,8 +241,12 @@ doRollback() {
   ln -snf /opt/mongodb/$oldMongoVersion/bin /opt/mongodb/bin
   
   log "start the old version mongod"
-  /opt/mongodb/bin/start-mongod-server.sh
-
+  if [ "$oldMongoVersion" = "3.4.5" ]; then
+    /opt/mongodb/bin/start-mongod-server.sh
+  else
+    /opt/app/bin/start-mongod-server.sh
+  fi
+  
   log "waiting for mongodb to be ready ..."
   retry 1200 3 0 isReplicasSetStatusOk
 
@@ -257,6 +265,10 @@ main() {
   if ! preCheck; then log "precheck error! stop upgrade!"; return 1; fi
   log "precheck done!"
 
+  # reserve the old version
+  getDbVersion > $VERSIONFILE
+  oldMongoVersion=$(cat $VERSIONFILE)
+
   toggleHealthCheck false
   
   log "upgrading current node ..."
@@ -270,7 +282,11 @@ main() {
   fi
 
   log "stopping old service"
-  /opt/mongodb/bin/stop-mongod-server.sh
+  if [ "$oldMongoVersion" = "3.4.5" ]; then
+    /opt/mongodb/bin/stop-mongod-server.sh
+  else
+    /opt/app/bin/stop-mongod-server.sh
+  fi
 
   log "replace new app files"
   proceed
@@ -284,11 +300,5 @@ main() {
   toggleHealthCheck true
   log "current node's upgrade: done!"
 }
-
-readonly VERSIONFILE="/data/versionfile"
-if [ ! -f $VERSIONFILE ]; then
-  getDbVersion > $VERSIONFILE
-fi
-oldMongoVersion=$(cat $VERSIONFILE)
 
 main $@
