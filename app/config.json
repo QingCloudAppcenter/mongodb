@@ -37,6 +37,18 @@
           "label": "Replica",
           "properties": [
             {
+              "key": "instance_class",
+              "label": "Resource type",
+              "description": "",
+              "type": "integer",
+              "default": 101,
+              "range": [
+                101,
+                202
+              ],
+              "required": "yes"
+            },
+            {
               "key": "cpu",
               "label": "CPU",
               "description": "CPUs of each node",
@@ -80,18 +92,6 @@
                 3,
                 5,
                 7
-              ],
-              "required": "yes"
-            },
-            {
-              "key": "instance_class",
-              "label": "Resource type",
-              "description": "",
-              "type": "integer",
-              "default": 1,
-              "range": [
-                0,
-                1
               ],
               "required": "yes"
             },
