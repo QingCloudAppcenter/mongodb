@@ -1,0 +1,23 @@
+{
+    "patch_policy": [""],
+    "patch_nodes": [{
+        "container": {
+            "snapshot": "ss-hpkkbz73",
+            "zone": "pek3a"
+        },
+        "patch": [{
+            "mount_role": "replica",
+            "mount_point": "/patch",
+            "mount_options": "defaults,noatime",
+            "filesystem": "ext4",
+            "cmd": "/patch/helper.sh doPatch"
+        }],
+        "rollback": [{
+            "mount_role": "replica",
+            "mount_point": "/patch",
+            "mount_options": "defaults,noatime",
+            "filesystem": "ext4",
+            "cmd": "/patch/helper.sh doRollback"
+        }]
+    }]
+}
