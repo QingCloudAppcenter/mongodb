@@ -1,0 +1,4 @@
+hosts
+files/tmp
+debug-*.yml
+*.tar.gz

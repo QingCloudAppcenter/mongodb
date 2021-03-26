@@ -312,6 +312,8 @@ security:
             for member in members:
                 if member_id == self.get_member_id(member):
                     member_in_db['host'] = self.get_member_host(member, port)
+                    member_in_db['tags']['qc_sid'] = member['sid']
+                    member_in_db['tags']['qc_node_id'] = member['node_id']
         ret = db.system.replset.update({'_id': DEFAULT_REPL_SET_NAME}, cfg)
         self.logger.info('cfg=%s, ret=%s', json_dumps(cfg), json_dumps(ret))
 

@@ -1,6 +1,6 @@
 ---
 - name: test all roles
-  hosts: all
+  hosts: image 
   gather_facts: no
   vars:
     caddy_version: 1.0.4
