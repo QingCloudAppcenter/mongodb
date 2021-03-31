@@ -97,7 +97,7 @@
                "cmd": "/upgrade/upgrade.sh getOrder"
             },
             "rollback": {
-                "cmd": "/upgrade/upgrade.sh doRollback"
+                "cmd": "if [ -f /opt/app/bin/upgrade.sh ] then /opt/app/bin/upgrade.sh doRollback; fi"
             },
             "changeFcv": {
                "type": "custom",
