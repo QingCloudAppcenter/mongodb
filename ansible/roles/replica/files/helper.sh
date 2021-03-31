@@ -47,11 +47,12 @@ showFcv() {
   local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
   local res=$(runMongoCmd "$jsstr")
   res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
+  local ver=$(runMongoCmd "db.version()")
   local tmpstr=$(cat <<EOF
 {
-  "labels": ["Feature compatibility version"],
+  "labels": ["Mongod version", "Feature compatibility version"],
   "data": [
-    ["$res"]
+    ["$ver", "$res"]
   ]
 }
 EOF
