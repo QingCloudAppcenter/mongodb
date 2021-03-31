@@ -12,7 +12,7 @@
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-5aadqef3",
+       "snapshot": "ss-2wvxcc0s",
        "zone": "pek3"
      },
      "copy":[{
@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-ci5wlyxa"
+            "image":"img-3ghocw7v"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -97,7 +97,7 @@
                "cmd": "/upgrade/upgrade.sh getOrder"
             },
             "rollback": {
-                "cmd": "if [ -f /opt/app/bin/upgrade.sh ] then /opt/app/bin/upgrade.sh doRollback; fi"
+                "cmd": "if [ -f /opt/app/bin/upgrade.sh ]; then /opt/app/bin/upgrade.sh doRollback; fi"
             },
             "changeFcv": {
                "type": "custom",
