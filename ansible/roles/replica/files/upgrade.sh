@@ -68,11 +68,6 @@ proceed() {
   ln -snf /opt/mongodb/$newMongoVersion/bin /opt/mongodb/bin
 }
 
-rollback() {
-  log "rolling back to $oldMongoVersion ..."
-  ln -snf $oldMongoVersion/bin /opt/mongodb/bin
-}
-
 # runMongoCmd
 # desc run mongo shell
 # $1: script string
@@ -241,11 +236,7 @@ doRollback() {
   ln -snf /opt/mongodb/$oldMongoVersion/bin /opt/mongodb/bin
   
   log "start the old version mongod"
-  if [ "$oldMongoVersion" = "3.4.5" ]; then
-    /opt/mongodb/bin/start-mongod-server.sh
-  else
-    /opt/app/bin/start-mongod-server.sh
-  fi
+  /opt/mongodb/bin/start-mongod-server.sh
   
   log "waiting for mongodb to be ready ..."
   retry 1200 3 0 isReplicasSetStatusOk
@@ -282,11 +273,7 @@ main() {
   fi
 
   log "stopping old service"
-  if [ "$oldMongoVersion" = "3.4.5" ]; then
-    /opt/mongodb/bin/stop-mongod-server.sh
-  else
-    /opt/app/bin/stop-mongod-server.sh
-  fi
+  /opt/mongodb/bin/stop-mongod-server.sh
 
   log "replace new app files"
   proceed
