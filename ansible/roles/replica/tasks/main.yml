@@ -42,7 +42,6 @@
     dest: /tmp/{{item.mongodb_version}}.tgz
     checksum: sha256:{{item.mongodb_sha}}
   with_items:
-    - {mongodb_version: "{{mongodb_version_34}}",mongodb_sha: "{{mongodb_sha_34}}"}
     - {mongodb_version: "{{mongodb_version_36}}",mongodb_sha: "{{mongodb_sha_36}}"}
 
 - get_url:
