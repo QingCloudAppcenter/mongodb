@@ -23,7 +23,6 @@
   with_items:
     - /opt
     - /root/.pip/
-    - /opt/app/conf/caddy
 
 - name: put pip conf
   copy: src=pip.conf dest=/root/.pip/pip.conf
