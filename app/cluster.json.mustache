@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-7ueq85ec"
+            "image":"img-2vfehm8g"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -101,7 +101,10 @@
             },
             "changeFcv": {
                "type": "custom",
-               "cmd": "/opt/app/bin/helper.sh changeFcv 3.6"
+               "cmd": "/opt/app/bin/helper.sh changeFcv",
+               "service_params": {
+                  "fcv": {{service_params.fcv}}
+               }
             }
          }
       }
@@ -232,7 +235,7 @@
    "display_tabs": {
       "FCV": {
          "cmd": "/opt/app/bin/helper.sh showFcv",
-         "description": "Feature compatibility version, please refer to [official documents](https://docs.mongodb.com/v3.6/reference/command/setFeatureCompatibilityVersion/#dbcmd.setFeatureCompatibilityVersion)"
+         "description": "Feature compatibility version, please refer to [official documents](https://docs.mongodb.com/v3.6/reference/command/setFeatureCompatibilityVersion/)."
       }
    }
 }

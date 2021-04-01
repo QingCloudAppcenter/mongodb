@@ -42,8 +42,6 @@
   "Download by wget ftp://IP/mongod.log": "在内网通过 ftp 下载。wget ftp://IP/mongod.log",
   "FCV": "特性兼容版本",
   "changeFcv": "修改特性兼容版本",
-  "Mongod version": "数据库版本",
   "Feature compatibility version": "特性兼容版本",
-  "please refer to": "请参考",
-  "official documents": "官方文档"
+  "Feature compatibility version, please refer to [official documents](https://docs.mongodb.com/v3.6/reference/command/setFeatureCompatibilityVersion/).": "特性兼容版本（Feature compatibility version），请参考[官方文档](https://docs.mongodb.com/v3.6/reference/command/setFeatureCompatibilityVersion/)."
 }
