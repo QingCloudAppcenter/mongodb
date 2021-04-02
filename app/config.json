@@ -126,7 +126,7 @@
         },
         {
           "key": "fcv",
-          "label": "feature compatibility version",
+          "label": "Feature compatibility version",
           "description": "",
           "default": "3.6",
           "range": ["3.4", "3.6"],
