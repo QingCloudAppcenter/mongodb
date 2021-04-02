@@ -127,7 +127,7 @@
         {
           "key": "fcv",
           "label": "Feature compatibility version",
-          "description": "",
+          "description": "if you upgrade your cluster from 3.4 to current version, fcv remains 3.4. Please test your server&client thoroughly before changing fcv to 3.6!",
           "default": "3.6",
           "range": ["3.4", "3.6"],
           "type": "string",

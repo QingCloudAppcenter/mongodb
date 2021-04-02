@@ -44,5 +44,6 @@
   "changeFcv": "修改特性兼容版本",
   "Feature compatibility version": "特性兼容版本",
   "Feature compatibility version, can be changed through 'changeFcv' menu, please refer to [official documents](https://docs.mongodb.com/v3.6/reference/command/setFeatureCompatibilityVersion/) to get more information.<br/>Caution1: if you use 3.6 features in your database configuration, you can't downgrade to fcv 3.4 anymore!<br/>Caution2: if you upgrade your cluster from 3.4 to current version, fcv remains 3.4. Please test your server&client thoroughly before changing fcv to 3.6!": "特性兼容版本（Feature compatibility version），可通过“修改特性兼容版本”菜单进行调整，详细说明请参考 [官方文档](https://docs.mongodb.com/v3.6/reference/command/setFeatureCompatibilityVersion/).<br/>注意1：如果在数据库配置中使用了3.6版特性，那么不能再降级至特性兼容版本3.4！<br/>注意2：如果从MongoDB 3.4升级到此版本的集群，特性兼容版本仍是3.4. 在切换至特性兼容版本3.6前，请对服务端和客户端做充分测试！",
-  "notice_when_upgrade": "升级前请确保集群各节点处于正常状态（primary或secondary，没有执行inital sync）.<br/>请做好备份再升级，请在业务不繁忙的时段进行升级！<br/>注意：升级过程中会出现2次主从切换，请确保客户端已做好相应准备."
+  "notice_when_upgrade": "升级前请确保集群各节点处于正常状态（primary或secondary，没有执行inital sync）.<br/>请做好备份再升级，请在业务不繁忙的时段进行升级！<br/>注意：升级过程中会出现2次主从切换，请确保客户端已做好相应准备.",
+  "if you upgrade your cluster from 3.4 to current version, fcv remains 3.4. Please test your server&client thoroughly before changing fcv to 3.6!": "如果从MongoDB 3.4升级到此版本的集群，特性兼容版本仍是3.4. 在切换至特性兼容版本3.6前，请对服务端和客户端做充分测试！"
 }
