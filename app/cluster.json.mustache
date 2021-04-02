@@ -93,8 +93,8 @@
                 "timeout": 1800
             },
             "get_nodes_order": {
-               "event": ["upgrade"],
-               "cmd": "/upgrade/upgrade.sh getOrder"
+               "event": ["upgrade", "scale_vertical"],
+               "cmd": "if [ -f /upgrade/upgrade.sh ]; then cmd='/upgrade/upgrade.sh getOrder'; else cmd='/opt/app/bin/upgrade.sh getOrder'; fi; $cmd"
             },
             "rollback": {
                 "cmd": "if [ -f /opt/app/bin/upgrade.sh ]; then /opt/app/bin/upgrade.sh doRollback; fi"
