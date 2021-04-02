@@ -7,12 +7,12 @@
    "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "upgrade_policy": [
-      "appv-xhnpehuq"
+      "appv-omli6gvn"
    ],
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-epbgrs13",
+       "snapshot": "ss-98pcxoim",
        "zone": "pek3"
      },
      "copy":[{
@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-i2o7whhf"
+            "image":"img-spde2wh0"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -76,7 +76,7 @@
                "cmd":"/opt/app/bin/mongo-trib.py reconfig"
             },
             "upgrade":{
-               "cmd": "/upgrade/opt/mongodb/bin/upgrade.sh",
+               "cmd": "/upgrade/upgrade.sh",
                "timeout": 10800
             },
             "copy_log": {
@@ -91,6 +91,20 @@
                 "type": "custom",
                 "cmd": "/opt/app/bin/mongo-trib.py clean_log",
                 "timeout": 1800
+            },
+            "get_nodes_order": {
+               "event": ["upgrade", "scale_vertical"],
+               "cmd": "if [ -f /upgrade/upgrade.sh ]; then cmd='/upgrade/upgrade.sh getOrder'; else cmd='/opt/app/bin/upgrade.sh getOrder'; fi; $cmd"
+            },
+            "rollback": {
+                "cmd": "if [ -f /opt/app/bin/upgrade.sh ]; then /opt/app/bin/upgrade.sh doRollback; fi"
+            },
+            "changeFcv": {
+               "type": "custom",
+               "cmd": "/opt/app/bin/helper.sh changeFcv",
+               "service_params": {
+                  "fcv": {{service_params.fcv}}
+               }
             }
          }
       }
@@ -104,7 +118,7 @@
    },
    "advanced_services": {
       "update_nodes_names": {
-         "cmd": "/opt/app/bin/mongo-trib.py get_nodes_names",
+         "cmd": "/opt/mongodb/bin/mongo-trib.py get_nodes_names",
          "timeout": 10
       }
    },
@@ -217,5 +231,11 @@
       "alarm":[
          "connections"
       ]
+   },
+   "display_tabs": {
+      "FCV": {
+         "cmd": "/opt/app/bin/helper.sh showFcv",
+         "description": "Feature compatibility version, can be changed through 'changeFcv' menu, please refer to [official documents](https://docs.mongodb.com/v3.6/reference/command/setFeatureCompatibilityVersion/) to get more information.<br/>Caution1: if you use 3.6 features in your database configuration, you can't downgrade to fcv 3.4 anymore!<br/>Caution2: if you upgrade your cluster from 3.4 to current version, fcv remains 3.4. Please test your server&client thoroughly before changing fcv to 3.6!"
+      }
    }
 }

@@ -23,7 +23,6 @@
   with_items:
     - /opt
     - /root/.pip/
-    - /opt/app/conf/caddy
 
 - name: put pip conf
   copy: src=pip.conf dest=/root/.pip/pip.conf
@@ -42,34 +41,45 @@
     dest: /tmp/{{item.mongodb_version}}.tgz
     checksum: sha256:{{item.mongodb_sha}}
   with_items:
-    - {mongodb_version: "{{mongodb_version_34}}",mongodb_sha: "{{mongodb_sha_34}}"}
     - {mongodb_version: "{{mongodb_version_36}}",mongodb_sha: "{{mongodb_sha_36}}"}
 
 - get_url:
     url: http://appcenter-docs.qingcloud.com/developer-guide/scripts/app-agent-linux-amd64.tar.gz
     dest: /tmp/app-agent-linux-amd64.tar.gz
 
-- name: Prepare service directories for Mongodb
+- name: Prepare service directories for Mongodb1
   file:
     path: "/opt/{{ item }}"
     owner: root
     group: root
     state: directory
   with_items:
-    - "{{mongo_dir_34}}"
     - "app/bin"
     - "mongodb"
 
+- name: Prepare servcie directories for Mongodb2
+  file:
+    path: "/opt/mongodb/{{ item }}"
+    owner: root
+    group: root
+    state: directory
+  with_items:
+    - "{{mongo_dir_36}}"
+
 - unarchive:
     src: /tmp/{{item.mongodb_version}}.tgz
-    dest: /opt/{{ item.mongodb_dir }}
+    dest: /opt/mongodb/{{ item.mongodb_dir }}
     remote_src: True
-    creates: "/opt/{{item.mongodb_dir}}/bin"
+    creates: "/opt/mongodb/{{item.mongodb_dir}}/bin"
     extra_opts: [ '--strip-components=1' ]
   with_items:
-  - {mongodb_version: "{{mongodb_version_34}}",mongodb_dir: "{{mongo_dir_34}}"}
-  - {mongodb_version: "{{mongodb_version_36}}",mongodb_dir: "mongodb"}
+  - {mongodb_version: "{{mongodb_version_36}}",mongodb_dir: "{{mongo_dir_36}}"}
 
+- name: create symlink to current mongodb version
+  file:
+    src: "/opt/mongodb/{{mongo_dir_36}}/bin"
+    dest: "/opt/mongodb/bin"
+    state: link
 
 - unarchive:
     src: /tmp/app-agent-linux-amd64.tar.gz
@@ -98,6 +108,7 @@
     - start-mongod-server.sh
     - stop-mongod-server.sh
     - upgrade.sh
+    - helper.sh
 
 - copy: src={{ item }} dest=/etc/confd/{{ item }}
   with_items:
