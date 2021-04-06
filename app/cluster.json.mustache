@@ -7,19 +7,28 @@
    "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "upgrade_policy": [
-        "appv-omli6gvn",
-        "appv-xhnpehuq",
-        "appv-20u3ybdq",
-        "appv-vfqckskh",
-        "appv-z5mjcj2m"
+        "appv-cu0tiqmz"
     ],
+   "upgrading_policy": "in-place-sequential",
+   "in-place-upgrade-nodes": [{
+     "container":{
+       "snapshot": "ss-98pcxoim",
+       "zone": "pek3"
+     },
+     "copy":[{
+       "mount_role": "replica",
+       "mount_point": "/upgrade",
+       "mount_options": "defaults,noatime",
+       "filesystem": "ext4"
+     }]
+   }],
    "nodes":[
       {
          "role":"replica",
          "container":{
             "type":"kvm",
-            "zone":"pek3a",
-            "image":"img-17o7wx5c"
+            "zone":"pek3",
+            "image":"img-jc1tfzh8"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -86,9 +95,15 @@
                 "timeout": 1800
             },
             "upgrade": {
-                "cmd": "/opt/app/bin/iptables-op.sh ban && /opt/app/bin/Upgrade.py && /opt/app/bin/iptables-op.sh open",
-                "post_start_service":false,
+                "cmd": "/upgrade/upgrade.sh",
                 "timeout": 86400
+            },
+            "get_nodes_order": {
+               "event": ["upgrade", "scale_vertical"],
+               "cmd": "if [ -f /upgrade/upgrade.sh ]; then cmd='/upgrade/upgrade.sh getOrder'; else cmd='/opt/app/bin/upgrade.sh getOrder'; fi; $cmd"
+            },
+            "rollback": {
+                "cmd": "if [ -f /opt/app/bin/upgrade.sh ]; then /opt/app/bin/upgrade.sh doRollback; fi"
             }
          }
       }
@@ -108,7 +123,7 @@
    },
    "advanced_services": {
       "update_nodes_names": {
-         "cmd": "/opt/mongodb/bin/mongo-trib.py get_nodes_names",
+         "cmd": "/opt/app/bin/mongo-trib.py get_nodes_names",
          "timeout": 10
       }
    },
