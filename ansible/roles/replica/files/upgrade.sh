@@ -312,6 +312,8 @@ doRollback() {
     fi
 
     log "stop higher version mongod"
+    local tmp=$(systemctl is-active zabbix-agent)
+    if [ "active" = "$tmp" ]; then systemctl stop zabbix-agent; fi
     /opt/app/bin/stop-mongod-server.sh
   fi
 
@@ -327,11 +329,7 @@ doRollback() {
   ln -snf /opt/mongodb/$oldMongoVersion/bin /opt/mongodb/bin
   
   log "start the old version mongod"
-  if [ "$oldMongoVersion" = "3.4.5" ]; then
-    /opt/mongodb/bin/start-mongod-server.sh
-  else
-    /opt/app/bin/start-mongod-server.sh
-  fi
+  /opt/app/bin/start-mongod-server.sh
   
   log "waiting for mongodb to be ready ..."
   retry 1200 3 0 isReplicasSetStatusOk
@@ -383,8 +381,11 @@ main() {
   log "replace new app files"
   proceed
 
+  log "get new cluster's config"
+  /opt/qingcloud/app-agent/bin/confd -onetime
+
   log "starting mongodb ..."
-  /opt/app/bin/start-mongod-server.sh
+  mkdir -p /data/mongodb /data/info /data/logs /data/caddy/logs /data/zabbix-agent/logs;/opt/app/bin/start-mongod-server.sh && /opt/app/bin/zabbix.sh start
 
   log "waiting for mongodb to be ready ..."
   retry 1200 3 0 isReplicasSetStatusOk

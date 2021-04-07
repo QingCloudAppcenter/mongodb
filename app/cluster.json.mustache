@@ -12,7 +12,7 @@
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-98pcxoim",
+       "snapshot": "ss-j8u07n86",
        "zone": "pek3"
      },
      "copy":[{
@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-e6qu2b1d"
+            "image":"img-i9ly3iih"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -103,7 +103,7 @@
                "cmd": "if [ -f /upgrade/upgrade.sh ]; then cmd='/upgrade/upgrade.sh getOrder'; else cmd='/opt/app/bin/upgrade.sh getOrder'; fi; $cmd"
             },
             "rollback": {
-                "cmd": "if [ -f /opt/app/bin/upgrade.sh ]; then /opt/app/bin/upgrade.sh doRollback; fi"
+                "cmd": "if [ -d /opt/app-3.6.8 ]; then if [ -d /opt/app ]; then /opt/app/bin/upgrade.sh doRollback; else mv /opt/app-3.6.8 /opt/app; fi; fi"
             },
             "changeFcv": {
                "type": "custom",
