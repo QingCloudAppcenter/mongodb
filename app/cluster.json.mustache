@@ -104,6 +104,13 @@
             },
             "rollback": {
                 "cmd": "if [ -f /opt/app/bin/upgrade.sh ]; then /opt/app/bin/upgrade.sh doRollback; fi"
+            },
+            "changeFcv": {
+               "type": "custom",
+               "cmd": "/opt/app/bin/helper.sh changeFcv",
+               "service_params": {
+                  "fcv": {{service_params.fcv}}
+               }
             }
          }
       }
@@ -153,6 +160,10 @@
          "cmd": "/opt/app/bin/MongoTrib.py print_connection_string",
          "timeout": 10,
          "description": ""
+      },
+      "FCV": {
+         "cmd": "/opt/app/bin/helper.sh showFcv",
+         "description": "Feature compatibility version, can be changed through 'changeFcv' menu, please refer to [official documents](https://docs.mongodb.com/v4.0/reference/command/setFeatureCompatibilityVersion/) to get more information.<br/>Caution1: if you use 4.0 features in your database configuration, you can't downgrade to fcv 3.6 anymore!<br/>Caution2: if you upgrade your cluster from 3.6 to current version, fcv remains 3.6. Please test your server&client thoroughly before changing fcv to 4.0!"
       }
    },
    "monitor":{
