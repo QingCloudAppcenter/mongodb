@@ -83,11 +83,13 @@ changeFcv() {
   local jsstr="db.adminCommand({getParameter:1,featureCompatibilityVersion:1})"
   local res=$(runMongoCmd "$jsstr")
   res=$(echo "$res" | sed -n '/[vV]ersion/p' |  grep -o '[[:digit:].]\{2,\}')
-  if [ "$res" = "$1" ]; then return; fi
+
+  local input=$(echo "$1" | grep -o '[[:digit:].-]\+')
+  if [ "$res" = "$input" ]; then return; fi
 
   if ! isReplicasSetStatusOk; then return; fi
 
-  jsstr="db.adminCommand({setFeatureCompatibilityVersion:\"$1\"})"
+  jsstr="db.adminCommand({setFeatureCompatibilityVersion:\"$input\"})"
   runMongoCmd "$jsstr"
 }
 
