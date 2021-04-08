@@ -62,6 +62,9 @@ proceed() {
   rsync -aAX /upgrade/opt/ /opt/
   log "creating symlink to $newMongoVersion ..."
   ln -snf /opt/mongodb/$newMongoVersion/bin /opt/mongodb/bin
+
+  log "copying tmp files ..."
+  rsync -aAX /upgrade/tmp/ /tmp/
 }
 
 rollback() {
@@ -338,6 +341,31 @@ doRollback() {
   log "current node's downgrade: done!"
 }
 
+readonly CADDY_VERSION="1.0.3"
+# the files needed are resident in /tmp
+installRuntimes() {
+  # runtime needed
+  dpkg -i /tmp/zabbix-release_3.4-1+xenial_all.deb
+  apt-get update && apt-get install -y zabbix-agent zabbix-get zabbix-sender
+  # system settings
+  cp -nf /tmp/limits.conf /etc/security/limits.conf
+  cp -nf /tmp/sysctl.conf /etc/sysctl.conf
+  sysctl -p /etc/sysctl.conf
+  # logrotate
+  cp -nf /tmp/logrotate-mongod.conf /etc/logrotate.d/logrotate-mongod.conf
+  # caddy
+  groupadd -f svc
+  useradd caddy -d /opt/caddy/current -c "Service User" -G svc -M -s /sbin/nologin
+  mkdir -p /opt/caddy/$CADDY_VERSION
+  tar -xzf /tmp/caddy_v${CADDY_VERSION}_linux_amd64.tar.gz -C /opt/caddy/$CADDY_VERSION
+  ln -snf /opt/caddy/$CADDY_VERSION /opt/caddy/current
+  chown -R caddy:svc /opt/caddy
+  cp -nf /tmp/caddy.service /etc/systemd/system/ && systemctl daemon-reload
+  # zabbix
+  mkdir -p /etc/zabbix/zabbix_agentd.d
+  cp -nf /tmp/zabbix_mongodb.conf /etc/zabbix/zabbix_agentd.d/
+}
+
 main() {
   initNode
 
@@ -381,7 +409,10 @@ main() {
   log "replace new app files"
   proceed
 
-  log "get new cluster's config"
+  log "install addition runtimes"
+  installRuntimes
+
+  log "refresh new cluster's config"
   /opt/qingcloud/app-agent/bin/confd -onetime
 
   log "starting mongodb ..."
