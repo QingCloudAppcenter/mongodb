@@ -57,9 +57,14 @@ proceed() {
 
   log "backup app folder"
   mv /opt/app /opt/app-$oldMongoVersion
+  log "backup confd folder"
+  mv /etc/confd/conf.d /etc/confd/conf.d-$oldMongoVersion
+  mv /etc/confd/templates /etc/confd/templates-$oldMongoVersion
 
   log "copying new files ..."
+  cp -r /upgrade/confd/* /etc/confd/
   rsync -aAX /upgrade/opt/ /opt/
+
   log "creating symlink to $newMongoVersion ..."
   ln -snf /opt/mongodb/$newMongoVersion/bin /opt/mongodb/bin
 }
