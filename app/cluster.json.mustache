@@ -12,7 +12,7 @@
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-j8u07n86",
+       "snapshot": "ss-fyozvnlq",
        "zone": "pek3"
      },
      "copy":[{
@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-i9ly3iih"
+            "image":"img-de676tm7"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -53,7 +53,7 @@
                "cmd":"/opt/app/bin/MongoTrib.py init"
             },
             "start":{
-               "cmd":"mkdir -p /data/mongodb /data/info /data/logs /data/caddy/logs /data/zabbix-agent/logs;/opt/app/bin/start-mongod-server.sh && /opt/app/bin/zabbix.sh start"
+               "cmd":"mkdir -p /data/mongodb /data/info /data/logs /data/caddy/logs /data/zabbix-agent/logs;chown caddy:svc /data/caddy/logs;/opt/app/bin/start-mongod-server.sh && /opt/app/bin/zabbix.sh start"
             },
             "stop":{
                "cmd":"systemctl stop zabbix-agent;/opt/app/bin/stop-mongod-server.sh"

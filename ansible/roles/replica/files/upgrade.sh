@@ -65,6 +65,9 @@ proceed() {
 
   log "copying tmp files ..."
   rsync -aAX /upgrade/tmp/ /tmp/
+
+  log "create folders in /data"
+  mkdir -p /data/info /data/logs /data/caddy/logs /data/zabbix-agent/logs;chown caddy:svc /data/caddy/logs
 }
 
 rollback() {
@@ -353,6 +356,8 @@ installRuntimes() {
   # logrotate
   cp -nf /tmp/logrotate-mongod.conf /etc/logrotate.d/logrotate-mongod.conf
   # caddy
+  groupadd -f svc
+  useradd caddy -d /opt/caddy/current -c "Service User" -G svc -M -s /sbin/nologin
   cp -nf /tmp/caddy.service /etc/systemd/system/ && systemctl daemon-reload
   # zabbix
   mkdir -p /etc/zabbix/zabbix_agentd.d
@@ -399,11 +404,11 @@ main() {
   log "stopping old service"
   /opt/app/bin/stop-mongod-server.sh
 
-  log "replace new app files"
-  proceed
-
   log "install addition runtimes"
   installRuntimes
+
+  log "replace new app files"
+  proceed
 
   log "refresh new cluster's config"
   /opt/qingcloud/app-agent/bin/confd -onetime
