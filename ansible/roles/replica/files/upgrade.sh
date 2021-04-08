@@ -62,12 +62,6 @@ proceed() {
   rsync -aAX /upgrade/opt/ /opt/
   log "creating symlink to $newMongoVersion ..."
   ln -snf /opt/mongodb/$newMongoVersion/bin /opt/mongodb/bin
-
-  log "copying tmp files ..."
-  rsync -aAX /upgrade/tmp/ /tmp/
-
-  log "create folders in /data"
-  mkdir -p /data/info /data/logs /data/caddy/logs /data/zabbix-agent/logs;chown caddy:svc /data/caddy/logs
 }
 
 rollback() {
@@ -347,21 +341,23 @@ doRollback() {
 # the files needed are resident in /tmp
 installRuntimes() {
   # runtime needed
-  dpkg -i /tmp/zabbix-release_3.4-1+xenial_all.deb
-  apt-get update && apt-get install -y zabbix-agent zabbix-get zabbix-sender
+  dpkg -i /upgrade/tmp/zabbix-release_3.4-1+xenial_all.deb
+  apt-get update --allow-unauthenticated && apt-get install -y --allow-unauthenticated zabbix-agent zabbix-get zabbix-sender
   # system settings
-  cp -nf /tmp/limits.conf /etc/security/limits.conf
-  cp -nf /tmp/sysctl.conf /etc/sysctl.conf
+  cp -nf /upgrade/tmp/limits.conf /etc/security/limits.conf
+  cp -nf /upgrade/tmp/sysctl.conf /etc/sysctl.conf
   sysctl -p /etc/sysctl.conf
   # logrotate
-  cp -nf /tmp/logrotate-mongod.conf /etc/logrotate.d/logrotate-mongod.conf
+  cp -nf /upgrade/tmp/logrotate-mongod.conf /etc/logrotate.d/logrotate-mongod.conf
   # caddy
   groupadd -f svc
   useradd caddy -d /opt/caddy/current -c "Service User" -G svc -M -s /sbin/nologin
-  cp -nf /tmp/caddy.service /etc/systemd/system/ && systemctl daemon-reload
+  cp -nf /upgrade/tmp/caddy.service /etc/systemd/system/ && systemctl daemon-reload
   # zabbix
   mkdir -p /etc/zabbix/zabbix_agentd.d
-  cp -nf /tmp/zabbix_mongodb.conf /etc/zabbix/zabbix_agentd.d/
+  cp -nf /upgrade/tmp/zabbix_mongodb.conf /etc/zabbix/zabbix_agentd.d/
+  # create additional folders in /data
+  mkdir -p /data/info /data/logs /data/caddy/logs /data/zabbix-agent/logs;chown caddy:svc /data/caddy/logs
 }
 
 main() {
@@ -404,17 +400,17 @@ main() {
   log "stopping old service"
   /opt/app/bin/stop-mongod-server.sh
 
-  log "install addition runtimes"
-  installRuntimes
-
   log "replace new app files"
   proceed
+
+  log "install addition runtimes"
+  installRuntimes
 
   log "refresh new cluster's config"
   /opt/qingcloud/app-agent/bin/confd -onetime
 
   log "starting mongodb ..."
-  mkdir -p /data/mongodb /data/info /data/logs /data/caddy/logs /data/zabbix-agent/logs;/opt/app/bin/start-mongod-server.sh && /opt/app/bin/zabbix.sh start
+  /opt/app/bin/start-mongod-server.sh && /opt/app/bin/zabbix.sh start
 
   log "waiting for mongodb to be ready ..."
   retry 1200 3 0 isReplicasSetStatusOk
