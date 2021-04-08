@@ -175,15 +175,11 @@
     force: yes
 
 - name: Copy SystemD files
-  vars:
-    src: "roles/common/files/etc/systemd/system/"
   copy:
-    src: "{{ src }}"
+    src: etc/systemd/system/caddy.service
     dest: /etc/systemd/system/
     owner: root
     group: root
-    mode: u=rw,go=r
-  when: src is directory
 
 - name: Copy zabbix files
   copy:

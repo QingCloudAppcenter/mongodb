@@ -341,7 +341,6 @@ doRollback() {
   log "current node's downgrade: done!"
 }
 
-readonly CADDY_VERSION="1.0.3"
 # the files needed are resident in /tmp
 installRuntimes() {
   # runtime needed
@@ -354,12 +353,6 @@ installRuntimes() {
   # logrotate
   cp -nf /tmp/logrotate-mongod.conf /etc/logrotate.d/logrotate-mongod.conf
   # caddy
-  groupadd -f svc
-  useradd caddy -d /opt/caddy/current -c "Service User" -G svc -M -s /sbin/nologin
-  mkdir -p /opt/caddy/$CADDY_VERSION
-  tar -xzf /tmp/caddy_v${CADDY_VERSION}_linux_amd64.tar.gz -C /opt/caddy/$CADDY_VERSION
-  ln -snf /opt/caddy/$CADDY_VERSION /opt/caddy/current
-  chown -R caddy:svc /opt/caddy
   cp -nf /tmp/caddy.service /etc/systemd/system/ && systemctl daemon-reload
   # zabbix
   mkdir -p /etc/zabbix/zabbix_agentd.d
