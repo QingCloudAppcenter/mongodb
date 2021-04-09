@@ -57,12 +57,17 @@ proceed() {
 
   log "backup app folder"
   mv /opt/app /opt/app-$oldMongoVersion
-  log "backup confd folder"
-  mv /etc/confd/conf.d /etc/confd/conf.d-$oldMongoVersion
-  mv /etc/confd/templates /etc/confd/templates-$oldMongoVersion
 
-  log "copying new files ..."
-  cp -r /upgrade/confd/* /etc/confd/
+  log "backup confd folder"
+  mkdir -p /data/confd-$oldMongoVersion
+  find /etc/confd/conf.d -name "*.toml" ! -name "cmd.info.toml" -exec mv {} /data/confd-$oldMongoVersion \;
+  find /etc/confd/templates -name "*.tmpl" ! -name "cmd.info.tmpl" -exec mv {} /data/confd-$oldMongoVersion \;
+
+  log "replace new confd files ..."
+  find /upgrade/confd -name "*.tmpl" -exec cp {} /etc/confd/templates \;
+  find /upgrade/confd -name "*.toml" -exec cp {} /etc/confd/conf.d \;
+
+  log "copy /upgrade/opt ..."
   rsync -aAX /upgrade/opt/ /opt/
 
   log "creating symlink to $newMongoVersion ..."

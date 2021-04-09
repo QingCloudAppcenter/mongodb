@@ -4,4 +4,4 @@ dest = "/etc/mongod_env"
 keys = [
     "/",
 ]
-reload_cmd = "/opt/app/bin/MongoTrib.py gen_conf && /opt/app/bin/restart-mongod-server.sh && /opt/app/bin/MongoTrib.py update_oplogsize"
+reload_cmd = "/opt/app/bin/MongoTrib.py gen_conf && /opt/app/bin/restart-mongod-server.sh && if [ pidof mongod ]; then /opt/app/bin/MongoTrib.py update_oplogsize; fi"
