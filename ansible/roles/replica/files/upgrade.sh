@@ -335,8 +335,20 @@ doRollback() {
     mv /opt/app-$oldMongoVersion /opt/app
   fi
 
+  log "restore confd files"
+  if [ -d /data/confd-$oldMongoVersion ]; then
+    find /etc/confd/conf.d -name "*.toml" ! -name "cmd.info.toml" -exec rm -rf {} \;
+    find /etc/confd/templates -name "*.tmpl" ! -name "cmd.info.tmpl" -exec rm -rf {} \;
+    find /data/confd-$oldMongoVersion -name "*.toml" -exec cp {} /etc/confd/conf.d \;
+    find /data/confd-$oldMongoVersion -name "*.tmpl" -exec cp {} /etc/confd/templates \;
+  fi
+
   log "correct the symlink to old folder:/opt/mongodb/$oldMongoVersion/bin"
   ln -snf /opt/mongodb/$oldMongoVersion/bin /opt/mongodb/bin
+
+  log "refresh old cluster's config"
+  /opt/qingcloud/app-agent/bin/confd -onetime
+  rm -rf /data/confd-$oldMongoVersion
   
   log "start the old version mongod"
   /opt/app/bin/start-mongod-server.sh
