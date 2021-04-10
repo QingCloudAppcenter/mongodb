@@ -363,8 +363,10 @@ doRollback() {
 # the files needed are resident in /tmp
 installRuntimes() {
   # runtime needed
-  dpkg -i /upgrade/tmp/zabbix-release_3.4-1+xenial_all.deb
-  apt-get update --allow-unauthenticated && apt-get install -y --allow-unauthenticated zabbix-agent zabbix-get zabbix-sender
+  dpkg -i /upgrade/debs/libcurl3_7.47.0-1ubuntu2.19_amd64.deb \
+    /upgrade/debs/zabbix-agent_1%3a3.4.15-1+xenial_amd64.deb \
+    /upgrade/debs/zabbix-get_1%3a3.4.15-1+xenial_amd64.deb \
+    /upgrade/debs/zabbix-sender_1%3a3.4.15-1+xenial_amd64.deb
   # system settings
   cp -nf /upgrade/tmp/limits.conf /etc/security/limits.conf
   cp -nf /upgrade/tmp/sysctl.conf /etc/sysctl.conf

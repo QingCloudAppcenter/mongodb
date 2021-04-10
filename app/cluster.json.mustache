@@ -7,12 +7,12 @@
    "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "upgrade_policy": [
-        "appv-cu0tiqmz"
+        "appv-x5gq8om1"
     ],
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-ao7okjj1",
+       "snapshot": "ss-nda5vfn6",
        "zone": "pek3"
      },
      "copy":[{
@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-c8crw0y0"
+            "image":"img-ms95p0xj"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -130,7 +130,7 @@
    },
    "advanced_services": {
       "update_nodes_names": {
-         "cmd": "/opt/app/bin/mongo-trib.py get_nodes_names",
+         "cmd": "/opt/mongodb/bin/mongo-trib.py get_nodes_names",
          "timeout": 10
       }
    },
