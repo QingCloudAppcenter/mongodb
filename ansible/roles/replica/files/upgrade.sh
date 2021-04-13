@@ -284,12 +284,18 @@ preCheck() {
 # desc: primary node does step down first
 # input: $1-seconds during which the node can't be primary again
 doStepDown() {
-  if runMongoCmd "rs.stepDown($1)"; then
+  local res=''
+  local codename=''
+  if res=$(runMongoCmd "rs.stepDown($1)"); then
     # need check error status
-    log "need check error status"
+    codename=$(echo "$res" | sed -n '/"codeName"/p'| grep -o 'NotMaster')
+    if [ "$codename" = "NotMaster" ]; then log "step down: not a primary, do nothing"; return; fi
+
+    log "step down error, codeName: $codename"
     retrun 1
   else
     # it's ok to proceed
+    log "connection error caused by stepdown, all is ok"
     :
   fi
 }
