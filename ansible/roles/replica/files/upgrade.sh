@@ -345,10 +345,14 @@ doRollback() {
 
   log "correct the symlink to old folder:/opt/mongodb/$oldMongoVersion/bin"
   ln -snf /opt/mongodb/$oldMongoVersion/bin /opt/mongodb/bin
+  rm -rf /opt/mongodb/$newMongoVersion
 
   log "refresh old cluster's config"
   /opt/qingcloud/app-agent/bin/confd -onetime
   rm -rf /data/confd-$oldMongoVersion
+
+  log "rm unused folders"
+  rm -rf /opt/caddy /data/logs /data/caddy /data/info /data/zabbix-agent
   
   log "start the old version mongod"
   /opt/app/bin/start-mongod-server.sh
