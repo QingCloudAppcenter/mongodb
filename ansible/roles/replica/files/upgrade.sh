@@ -441,7 +441,8 @@ main() {
   installRuntimes
 
   log "refresh new cluster's config"
-  /opt/qingcloud/app-agent/bin/confd -onetime
+  systemctl restart confd
+  sleep 10s
 
   log "starting mongodb ..."
   /opt/app/bin/start-mongod-server.sh && /opt/app/bin/zabbix.sh start
