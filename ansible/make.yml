@@ -17,6 +17,7 @@
     mongodb_version_40: mongodb-linux-x86_64-4.0.3
     mongodb_sha_40: 4277a5098268e44e59a6f93e0be41d359132a6a469a3ee204c094fd437f57049
     caddy_path: /etc/systemd/system/caddy.service
+    app_agent_version: 1.0.6
 #    mongodb_version: mongodb-linux-x86_64-3.4.1
 #    mongodb_sha: 7d8aa843c83ed1cbcd05b5ad8b9c9d6d46de12506c77d3c29c303fba7f19eebc
 #    mongodb_version: mongodb-linux-x86_64-3.0.15

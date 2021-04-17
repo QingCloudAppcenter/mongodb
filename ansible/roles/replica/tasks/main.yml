@@ -47,7 +47,7 @@
     - {mongodb_version: "{{mongodb_version_40}}",mongodb_sha: "{{mongodb_sha_40}}"}
 
 - get_url:
-    url: http://appcenter-docs.qingcloud.com/developer-guide/scripts/app-agent-linux-amd64.tar.gz
+    url: https://github.com/QingCloudAppcenter/AppcenterAgent/releases/download/v{{ app_agent_version }}/app-agent-linux-amd64.tar.gz
     dest: /tmp/app-agent-linux-amd64.tar.gz
 
 - name: Prepare service directories for Mongodb1
