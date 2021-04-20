@@ -12,7 +12,7 @@
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-98pcxoim",
+       "snapshot": "ss-keb1magt",
        "zone": "pek3"
      },
      "copy":[{
@@ -28,7 +28,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-physngs0"
+            "image":"img-ged3pk5v"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -105,6 +105,10 @@
                "service_params": {
                   "fcv": {{service_params.fcv}}
                }
+            },
+            "fixOplogSize": {
+               "type": "custom",
+               "cmd": "/opt/app/bin/helper.sh fixOplogSize"
             }
          }
       }

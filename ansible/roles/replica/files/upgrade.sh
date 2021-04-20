@@ -66,6 +66,10 @@ proceed() {
   rsync -aAX /upgrade/opt/ /opt/
   log "creating symlink to $newMongoVersion ..."
   ln -snf /opt/mongodb/$newMongoVersion/bin /opt/mongodb/bin
+
+  log "replace confd files"
+  mv /etc/confd/conf.d/mongod_env.toml /etc/confd/conf.d/mongod_env$oldMongoVersion.toml
+  cp /upgrade/mongod_env.toml /etc/confd/conf.d/
 }
 
 # runMongoCmd
@@ -277,6 +281,10 @@ main() {
 
   log "replace new app files"
   proceed
+
+  log "refresh confd file"
+  systemctl restart confd
+  sleep 10s
 
   log "starting mongodb ..."
   /opt/app/bin/start-mongod-server.sh
