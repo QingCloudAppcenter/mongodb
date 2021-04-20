@@ -68,7 +68,7 @@ proceed() {
   ln -snf /opt/mongodb/$newMongoVersion/bin /opt/mongodb/bin
 
   log "replace confd files"
-  mv /etc/confd/conf.d/mongod_env.toml /etc/confd/conf.d/mongod_env$oldMongoVersion.toml
+  mv /etc/confd/conf.d/mongod_env.toml /data/mongod_env$oldMongoVersion.toml
   cp /upgrade/mongod_env.toml /etc/confd/conf.d/
 }
 
@@ -238,6 +238,12 @@ doRollback() {
 
   log "correct the symlink to old folder:/opt/mongodb/$oldMongoVersion/bin"
   ln -snf /opt/mongodb/$oldMongoVersion/bin /opt/mongodb/bin
+
+  log "recovery the old confd file"
+  mv /etc/confd/conf.d/mongod_env.toml /data/mongod_env$newMongoVersion.toml
+  mv /data/mongod_env$oldMongoVersion.toml /etc/confd/conf.d/mongod_env.toml
+  systemctl restart confd
+  sleep 10s
   
   log "start the old version mongod"
   /opt/mongodb/bin/start-mongod-server.sh
