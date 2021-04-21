@@ -183,26 +183,6 @@ EOF
   runMongoCmd "$jsstr" "$1"
 }
 
-# updateOplogSize
-# desc: update oplog size when changed
-updateOplogSize() {
-  initNode
-  if ! pidof mongod; then log "updateOplogSize: mongod is not running, skipping!"; return; fi
-  if [ ! -f /etc/mongod.conf ]; then log "updateOplogSize: cluster init, skipping"; return; fi
-  local newOplogSize=$(awk '$1=="oplogSize:" {print $2}' /etc/mongod_env)
-  local oplogSize=$(getOplogSize)
-  if [ "$newOplogSize" = "$oplogSize" ]; then log "updateOplogSize: oplog size does not change, skipping"; return; fi
-
-  retry 1200 3 0 isReplicasSetStatusOk
-  if ! isMaster; then log "updateOplogSize: not primary, skipping!"; return; fi
-
-  local iplist=($(getOrderIp))
-  for((i=0;i<${#iplist[@]};i++)); do
-    runMongoCmd "db.adminCommand({replSetResizeOplog: 1, size: $newOplogSize})" "${iplist[i]}"
-    log "updateOplogSize: updated oplogSize for ${iplist[i]}"
-  done
-}
-
 # fixOplogSize
 # desc: make sure the oplog size is identitical between conf and runtime
 fixOplogSize() {
