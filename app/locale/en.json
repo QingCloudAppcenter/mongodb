@@ -1,3 +1,3 @@
 {
-  "notice_when_upgrade": "Please make sure all nodes in the cluster are in normal status (primary or secondary, and not doing initial sync).<br/>Please make a backup before upgrading the cluster, and upgrade when the business is not busy.<br/>Caution: there will be two master-slave switches during the upgrade process, please make sure that the client is ready for the situation!"
+  "notice_when_upgrade": "Please make sure all nodes in the cluster are in normal status (primary or secondary, and not doing initial sync).<br/>Please make a backup before upgrading the cluster, and upgrade when the business is not busy.<br/>Caution: there will be two master-slave switches during the upgrade process, please make sure that the client is ready for the situation!<br/>Caution: please run the custome service 'fixOpligSize' when the cluster status is normal after ugrade."
 }

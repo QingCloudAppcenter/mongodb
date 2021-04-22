@@ -53,6 +53,10 @@ getOplogSize() {
   awk '$1=="oplogSizeMB:" {print $2}' /etc/mongod.conf
 }
 
+getMaxConns() {
+  awk '$1=="maxIncomingConnections:" {print $2}' /etc/mongod.conf
+}
+
 # runMongoCmd
 # desc run mongo shell
 # $1: script string
@@ -198,6 +202,52 @@ fixOplogSize() {
       runMongoCmd "db.adminCommand({replSetResizeOplog: 1, size: $oplogSize})" "${iplist[i]}"
       log "fixOplogSize: fixed oplogSize for ${iplist[i]}"
     fi
+  done
+}
+
+needReboot() {
+  local newPort=$(awk '$1=="port:" {print $2}' /etc/mongod_env)
+  local port=$(getMongoPort)
+  if [ "$newPort" != "$port" ]; then return; fi
+  local newMaxConns=$(awk '$1=="maxConns:" {print $2}' /etc/mongod_env)
+  local maxConns=$(getMaxConns)
+  if [ "$newMaxConns" != "$maxConns" ]; then return; fi
+  return 1
+}
+
+updateParams() {
+  initNode
+  if ! pidof mongod; then
+    log "init cluster, create mongod.conf file"
+    /opt/app/bin/mongo-trib.py gen_conf
+    return
+  fi
+  retry 1200 3 0 isReplicasSetStatusOk
+  if ! isMaster; then log "updateParams: not primary, skipping!"; return; fi
+
+  local newOplogSize=$(awk '$1=="oplogSize:" {print $2}' /etc/mongod_env)
+  local oplogSize=$(getOplogSize)
+  local iplist=($(getOrderIp))
+  if [ "$newOplogSize" != "$oplogSize" ]; then
+    for((i=0;i<${#iplist[@]};i++)); do
+      runMongoCmd "db.adminCommand({replSetResizeOplog: 1, size: $newOplogSize})" "${iplist[i]}"
+      log "updateParams: update oplogSize for ${iplist[i]}"
+    done
+  fi
+
+  local flag="no"
+  if needReboot; then flag="yes"; fi
+
+  for((i=0;i<${#iplist[@]};i++)); do
+    ssh root@${iplist[i]} /opt/app/bin/mongo-trib.py gen_conf
+    log "updateParams: update mongod.conf for ${iplist[i]}"
+  done
+
+  if [ "$flag" = "no" ]; then log "only update oplogsize, needn't reboot"; return; fi
+
+  for((i=0;i<${#iplist[@]};i++)); do
+    ssh root@${iplist[i]} /opt/app/bin/restart-mongod-server.sh
+    log "updateParams: restart mongod for ${iplist[i]}"
   done
 }
 
