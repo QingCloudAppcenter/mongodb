@@ -41,7 +41,7 @@
               "label": "Resource type",
               "description": "",
               "type": "integer",
-              "default": 101,
+              "default": 202,
               "range": [
                 101,
                 202

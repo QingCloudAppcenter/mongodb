@@ -4,4 +4,4 @@ dest = "/etc/mongod_env"
 keys = [
     "/",
 ]
-reload_cmd = "/opt/app/bin/mongo-trib.py gen_conf && /opt/app/bin/restart-mongod-server.sh && /opt/app/bin/helper.sh fixOplogSize"
+reload_cmd = "/opt/app/bin/helper.sh updateParams"
