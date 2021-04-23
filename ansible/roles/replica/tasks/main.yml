@@ -3,7 +3,7 @@
 - name: apt install required packages
   apt:
     update_cache: yes
-    name: [ 'vim', 'xfsprogs', 'python2.7-dev', 'python-pip', 'htop', 'lsof', 'bwm-ng', 'python-simplejson']
+    name: [ 'vim', 'xfsprogs', 'python2.7-dev', 'python-pip', 'htop', 'lsof', 'bwm-ng', 'python-simplejson', 'vsftpd']
     state: present
 
 - group:
@@ -98,6 +98,8 @@
 - copy: src=limits.conf dest=/etc/security/limits.conf
 
 - copy: src=sysctl.conf dest=/etc/sysctl.conf
+
+- copy: src=vsftpd.conf dest=/etc/vsftpd.conf
 
 - copy: src=mongodb.key dest=/etc/mongodb.key mode=0400 owner=mongodb group=mongodb
 
