@@ -70,6 +70,9 @@ proceed() {
   log "replace confd files"
   mv /etc/confd/conf.d/mongod_env.toml /data/mongod_env$oldMongoVersion.toml
   cp /upgrade/mongod_env.toml /etc/confd/conf.d/
+
+  log "create needed folder"
+  mkdir -p /data/info
 }
 
 # runMongoCmd
