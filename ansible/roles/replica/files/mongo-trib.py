@@ -72,6 +72,8 @@ class Mongo(object):
     KEY_FILE_PATH = '/etc/mongodb.key'
     IGNORE_AGENT_PATH = '/usr/local/etc/ignore_agent'
     RECONFIG_PATH = '/usr/local/etc/reconfig'
+    INFO_DIR = "/data/info/"
+    IP_FILE = INFO_DIR + "ip.info"
 
     START_CMD = '/opt/app/bin/start-mongod-server.sh'
     STOP_CMD = '/opt/app/bin/stop-mongod-server.sh'
@@ -271,19 +273,25 @@ security:
         return ret
 
     def detect_host_changed(self):
+        if self.check_local_mongod():
+            self.logger.info("mongod 存活")
         if os.path.isfile(self.RECONFIG_PATH):
             self.logger.info('[detect_host_changed] reconfig file exists')
             return
-
+        members = self.get_members()
+        members = [{member["node_id"]: member["ip"]} for member in members]
         try:
             c = self.connect_local()
             c.admin.command('replSetGetStatus', 1)
-        except Exception as e:
 
+        except Exception as e:
             if isinstance(e, OperationFailure) and REPL_CONF_INVALID in e.message:
                 open(self.RECONFIG_PATH, 'a').close()
                 try:
+                    self.logger.debug("We will reconfig_host")
                     self.reconfig_host()
+                    with open(self.IP_FILE, "w") as f:
+                        f.write(json.dumps(members))
                     return
                 except Exception as e:
                     raise e
@@ -291,6 +299,26 @@ security:
                     os.remove(self.RECONFIG_PATH)
 
             self.logger.info('[detect_host_changed] catch error: [%s]', e)
+        # 版本问题，mongo 4.0 无法准确检测到 ip 的变化
+        if not os.path.exists(self.IP_FILE):
+            with open(self.IP_FILE, "w") as f:
+                f.write(json.dumps(members))
+            return
+        with open(self.IP_FILE, "r") as f:
+            file_members = json.loads(f.read().strip())
+        for member in members:
+            if member not in file_members:
+                open(self.RECONFIG_PATH, 'a').close()
+                try:
+                    self.logger.debug("We will reconfig_host")
+                    self.reconfig_host()
+                    with open(self.IP_FILE, "w") as f:
+                        f.write(json.dumps(members))
+                    return
+                except Exception as e:
+                    raise e
+                finally:
+                    os.remove(self.RECONFIG_PATH)
 
     def get_env_port(self):
         meta_data = self.get_meta_data()
