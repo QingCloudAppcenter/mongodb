@@ -12,7 +12,7 @@
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-k7eueuwu",
+       "snapshot": "ss-rf2pmbvi",
        "zone": "pek3"
      },
      "copy":[{
@@ -21,7 +21,7 @@
        "mount_options": "defaults,noatime",
        "filesystem": "ext4",
        "source": "/upgrade",
-       "destination": "/data/upgrade"
+       "destination": "/data/upgrade-3.6.8"
      }]
    }],
    "nodes":[
@@ -30,7 +30,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-fbxjyk57"
+            "image":"img-nv0vpckj"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -54,7 +54,7 @@
                "cmd":"/opt/app/bin/mongo-trib.py init"
             },
             "start":{
-               "cmd":"mkdir -p /data/mongodb;/opt/app/bin/start-mongod-server.sh"
+               "cmd":"mkdir -p /data/mongodb /data/info;/opt/app/bin/start-mongod-server.sh"
             },
             "stop":{
                "cmd":"/opt/app/bin/stop-mongod-server.sh"
