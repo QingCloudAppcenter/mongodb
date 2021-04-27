@@ -12,7 +12,7 @@
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-k7eueuwu",
+       "snapshot": "ss-rf2pmbvi",
        "zone": "pek3"
      },
      "copy":[{
@@ -21,7 +21,7 @@
        "mount_options": "defaults,noatime",
        "filesystem": "ext4",
        "source": "/upgrade",
-       "destination": "/data/upgrade"
+       "destination": "/data/upgrade-3.6.8"
      }]
    }],
    "nodes":[
@@ -30,7 +30,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-x5capiyl"
+            "image":"img-nv0vpckj"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
