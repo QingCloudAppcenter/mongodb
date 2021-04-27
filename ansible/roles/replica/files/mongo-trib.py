@@ -72,8 +72,8 @@ class Mongo(object):
     KEY_FILE_PATH = '/etc/mongodb.key'
     IGNORE_AGENT_PATH = '/usr/local/etc/ignore_agent'
     RECONFIG_PATH = '/usr/local/etc/reconfig'
-    INFO_DIR = "/data/info/"
-    IP_FILE = INFO_DIR + "ip.info"
+    INFO_DIR = '/data/info/'
+    IP_FILE = INFO_DIR + 'ip.info'
 
     START_CMD = '/opt/app/bin/start-mongod-server.sh'
     STOP_CMD = '/opt/app/bin/stop-mongod-server.sh'
@@ -274,7 +274,7 @@ security:
 
     def detect_host_changed(self):
         if self.check_local_mongod():
-            self.logger.info("mongod 存活")
+            self.logger.info("mongod is alive")
         if os.path.isfile(self.RECONFIG_PATH):
             self.logger.info('[detect_host_changed] reconfig file exists')
             return
@@ -299,7 +299,7 @@ security:
                     os.remove(self.RECONFIG_PATH)
 
             self.logger.info('[detect_host_changed] catch error: [%s]', e)
-        # 版本问题，mongo 4.0 无法准确检测到 ip 的变化
+        # more test，can't properly detect ip change when MongoDB version is 3.6+
         if not os.path.exists(self.IP_FILE):
             with open(self.IP_FILE, "w") as f:
                 f.write(json.dumps(members))
