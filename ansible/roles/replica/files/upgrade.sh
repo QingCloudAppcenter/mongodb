@@ -354,11 +354,12 @@ doRollback() {
   rm -rf /opt/mongodb/$newMongoVersion
 
   log "refresh old cluster's config"
-  /opt/qingcloud/app-agent/bin/confd -onetime
+  systemctl restart confd
+  sleep 10s
   rm -rf /data/confd-$oldMongoVersion
 
   log "rm unused folders"
-  rm -rf /opt/caddy /data/logs /data/caddy /data/info /data/zabbix-agent
+  rm -rf /opt/caddy /data/logs /data/caddy /data/zabbix-agent
   
   log "start the old version mongod"
   /opt/app/bin/start-mongod-server.sh

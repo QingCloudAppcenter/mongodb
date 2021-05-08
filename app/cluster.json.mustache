@@ -7,19 +7,22 @@
    "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "upgrade_policy": [
-        "appv-x5gq8om1"
+        "appv-x5gq8om1",
+        "appv-7nc8ujnc"
     ],
    "upgrading_policy": "in-place-sequential",
    "in-place-upgrade-nodes": [{
      "container":{
-       "snapshot": "ss-7rdmi1mk",
+       "snapshot": "ss-vdselg09",
        "zone": "pek3"
      },
      "copy":[{
        "mount_role": "replica",
        "mount_point": "/upgrade",
        "mount_options": "defaults,noatime",
-       "filesystem": "ext4"
+       "filesystem": "ext4",
+       "source": "/upgrade",
+       "destination": "/data/upgrade-4.0.3"
      }]
    }],
    "nodes":[
@@ -28,7 +31,7 @@
          "container":{
             "type":"kvm",
             "zone":"pek3",
-            "image":"img-3jiqc7ak"
+            "image":"img-9e2yamav"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
