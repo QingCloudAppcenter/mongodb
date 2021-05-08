@@ -138,6 +138,15 @@
           ],
           "type": "string",
           "required": "yes"
+        },
+        {
+          "key": "fcv",
+          "label": "Feature compatibility version",
+          "description": "if you upgrade your cluster from 3.6 to current version, fcv remains 3.6. Please test your server&client thoroughly before changing fcv to 4.0!",
+          "default": "4.0",
+          "range": ["3.6", "4.0"],
+          "type": "string",
+          "required": "yes"
         }
       ]
     },

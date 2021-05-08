@@ -415,8 +415,19 @@ security:
         meta_data = self.get_meta_data()
         env = meta_data.get('env', {})
         return env.get('port', DEFAULT_PORT)
+    
+    def is_upgrading(self):
+        meta_data = self.get_meta_data()
+        up_status = meta_data.get('upgrade-audit', {})
+        if len(up_status) == 0:
+            return False
+        return True
 
     def update_oplogsize(self):
+        if self.is_upgrading():
+            self.logger.info("it's now upgrading, skipping!")
+            return
+
         """
         {
             "ok": 1,
