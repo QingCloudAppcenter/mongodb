@@ -7,19 +7,31 @@
    "multi_zone_policy": "round_robin",
    "advanced_actions": ["change_vxnet", "scale_horizontal"],
    "upgrade_policy": [
-        "appv-omli6gvn",
-        "appv-xhnpehuq",
-        "appv-20u3ybdq",
-        "appv-vfqckskh",
-        "appv-z5mjcj2m"
+        "appv-x5gq8om1",
+        "appv-7nc8ujnc"
     ],
+   "upgrading_policy": "in-place-sequential",
+   "in-place-upgrade-nodes": [{
+     "container":{
+       "snapshot": "ss-tqqcx33x",
+       "zone": "pek3"
+     },
+     "copy":[{
+       "mount_role": "replica",
+       "mount_point": "/upgrade",
+       "mount_options": "defaults,noatime",
+       "filesystem": "ext4",
+       "source": "/upgrade",
+       "destination": "/data/upgrade-4.0.3"
+     }]
+   }],
    "nodes":[
       {
          "role":"replica",
          "container":{
             "type":"kvm",
-            "zone":"pek3a",
-            "image":"img-17o7wx5c"
+            "zone":"pek3",
+            "image":"img-c0r00t35"
          },
          "instance_class":{{cluster.replica.instance_class}},
          "count":{{cluster.replica.count}},
@@ -86,9 +98,22 @@
                 "timeout": 1800
             },
             "upgrade": {
-                "cmd": "/opt/app/bin/iptables-op.sh ban && /opt/app/bin/Upgrade.py && /opt/app/bin/iptables-op.sh open",
-                "post_start_service":false,
+                "cmd": "/upgrade/upgrade.sh",
                 "timeout": 86400
+            },
+            "get_nodes_order": {
+               "event": ["upgrade", "scale_vertical"],
+               "cmd": "if [ -f /upgrade/upgrade.sh ]; then cmd='/upgrade/upgrade.sh getOrder'; else cmd='/opt/app/bin/upgrade.sh getOrder'; fi; $cmd"
+            },
+            "rollback": {
+                "cmd": "if [ -d /opt/app-3.6.8 ]; then if [ -d /opt/app ]; then /opt/app/bin/upgrade.sh doRollback; else mv /opt/app-3.6.8 /opt/app; fi; fi"
+            },
+            "changeFcv": {
+               "type": "custom",
+               "cmd": "/opt/app/bin/helper.sh changeFcv",
+               "service_params": {
+                  "fcv": {{service_params.fcv}}
+               }
             }
          }
       }
@@ -138,6 +163,10 @@
          "cmd": "/opt/app/bin/MongoTrib.py print_connection_string",
          "timeout": 10,
          "description": ""
+      },
+      "FCV": {
+         "cmd": "/opt/app/bin/helper.sh showFcv",
+         "description": "Feature compatibility version, can be changed through 'changeFcv' menu, please refer to [official documents](https://docs.mongodb.com/v4.0/reference/command/setFeatureCompatibilityVersion/) to get more information.<br/>Caution1: if you use 4.0 features in your database configuration, you can't downgrade to fcv 3.6 anymore!<br/>Caution2: if you upgrade your cluster from 3.6 to current version, fcv remains 3.6. Please test your server&client thoroughly before changing fcv to 4.0!"
       }
    },
    "monitor":{

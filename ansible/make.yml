@@ -13,10 +13,11 @@
     mongo_dir_36: mongo36
     mongodb_version_36: mongodb-linux-x86_64-3.6.8
     mongodb_sha_36: b6061204db897087d1d9e30d11fe84280e326323f8984e48c2afcf04711e64f5
-    mongo_dir_40: mongo40
+    mongo_dir_40: 4.0.3
     mongodb_version_40: mongodb-linux-x86_64-4.0.3
     mongodb_sha_40: 4277a5098268e44e59a6f93e0be41d359132a6a469a3ee204c094fd437f57049
     caddy_path: /etc/systemd/system/caddy.service
+    app_agent_version: 1.0.6
 #    mongodb_version: mongodb-linux-x86_64-3.4.1
 #    mongodb_sha: 7d8aa843c83ed1cbcd05b5ad8b9c9d6d46de12506c77d3c29c303fba7f19eebc
 #    mongodb_version: mongodb-linux-x86_64-3.0.15
